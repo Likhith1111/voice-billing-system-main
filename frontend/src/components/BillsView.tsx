@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { FileText, Plus, X, Eye, Search, Filter, Download, QrCode } from 'lucide-react';
+import { FileText, Plus, X, Eye, Search, Filter, Download, QrCode, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../App';
 import UpiPaymentModal from './UpiPaymentModal';
@@ -137,6 +137,26 @@ export default function BillsView() {
       console.error(e);
       toast.error("Failed to generate PDF");
     }
+  };
+
+  const handleSendWhatsApp = (bill: any) => {
+    const cleanAmount = String(bill.amount || '0').replace('₹', '').replace(/,/g, '').trim();
+    const lines = [
+      `*Invoice: ${bill.invoice || 'N/A'}*`,
+      `Customer: ${bill.customer || 'Walk-in Customer'}`,
+      `Amount: ₹${cleanAmount}`,
+      `Time: ${bill.time || ''}`,
+      `Status: ${bill.status || 'Paid'}`,
+      `Payment: ${bill.payment_mode || 'Cash'}`,
+      ``,
+      `Thank you for shopping with us! 🙏`,
+    ];
+    const text = encodeURIComponent(lines.join('\n'));
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  };
+
+  const handlePreview = (bill: any) => {
+    setSelectedBill(bill);
   };
 
   const filteredBills = useMemo(() => {
