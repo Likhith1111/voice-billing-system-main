@@ -608,8 +608,8 @@ export default function BillsView() {
       {upiBill && (
         <UpiPaymentModal
           amount={parseFloat((upiBill.amount || "").replace(/[^0-9.]/g, "")) || 0}
-          storeName={shopkeeper?.business_name || "SmartQ Store"}
-          upiId={(shopkeeper as any)?.upi_id || "quantumvoice@upi"}
+          storeName={shopkeeper?.business_name || "QBill Store"}
+          upiId={(shopkeeper as any)?.upi_id || "qbill@upi"}
           invoiceNumber={upiBill.invoice}
           customerName={upiBill.customer}
           onClose={() => setUpiBill(null)}

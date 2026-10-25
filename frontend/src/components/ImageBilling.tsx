@@ -413,8 +413,8 @@ export default function ImageBilling() {
       formattedPhone.length === 10 ? `91${formattedPhone}` : formattedPhone;
     const grandTotal = calculateGrandTotal();
 
-    const upiId = (shopkeeper as any)?.upi_id || "quantumvoice@upi";
-    const storeName = shopkeeper?.business_name || "QuantumVoice Store";
+    const upiId = (shopkeeper as any)?.upi_id || "qbill@upi";
+    const storeName = shopkeeper?.business_name || "QBill Store";
     const upiPayUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(storeName)}&am=${grandTotal}&cu=INR`;
 
     let message = `*🛍️ ${storeName} Invoice*\n\n`;
@@ -1085,7 +1085,7 @@ export default function ImageBilling() {
             </button>
             <div className="mb-6 text-center">
               <h2 className="text-2xl font-black text-slate-900">
-                QuantumVoice
+                QBill
               </h2>
               <p className="text-sm font-medium text-slate-500">
                 Official Invoice
@@ -1111,7 +1111,7 @@ export default function ImageBilling() {
               </p>
               <div className="rounded-xl border border-slate-100 bg-white p-3 shadow-sm">
                 <QRCode
-                  value={`upi://pay?pa=${encodeURIComponent((shopkeeper as any)?.upi_id || "quantumvoice@upi")}&pn=${encodeURIComponent(shopkeeper?.business_name || "QuantumVoice Store")}&am=${calculateGrandTotal()}&cu=INR`}
+                  value={`upi://pay?pa=${encodeURIComponent((shopkeeper as any)?.upi_id || "qbill@upi")}&pn=${encodeURIComponent(shopkeeper?.business_name || "QBill Store")}&am=${calculateGrandTotal()}&cu=INR`}
                   size={120}
                   level="M"
                 />

@@ -90,7 +90,7 @@ class RegisterView(APIView):
             )
             Notification.objects.create(
                 shopkeeper=shopkeeper,
-                title="Welcome to QuantumVoice!",
+                title="Welcome to QBill!",
                 description=f"Your store '{store_name}' is set up and ready to generate AI bills.",
                 time="Just now",
                 icon="Bell",
@@ -739,7 +739,7 @@ class GenerateBillView(APIView):
         p = canvas.Canvas(buffer, pagesize=letter)
         
         p.setFont("Helvetica-Bold", 20)
-        p.drawString(100, 750, "QuantumVoice Official Invoice")
+        p.drawString(100, 750, "QBill Official Invoice")
         
         p.setFont("Helvetica", 12)
         p.drawString(100, 720, f"Customer: {customer_name} {f'({customer_phone})' if customer_phone else ''}")

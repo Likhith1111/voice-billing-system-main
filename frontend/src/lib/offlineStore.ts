@@ -1,4 +1,4 @@
-// Offline-first store and fallback database for QuantumVoice
+// Offline-first store and fallback database for QBill
 // Ensures the app works 100% on mobile / Vercel even when the local backend server is not reachable.
 
 export interface Shopkeeper {

@@ -215,7 +215,7 @@ export default function Home() {
         setNotifications([
           {
             id: 1,
-            title: `Welcome to ${shopkeeper?.store_name || "QuantumVoice"}!`,
+            title: `Welcome to ${shopkeeper?.store_name || "QBill"}!`,
             description: "Your store is active and ready to create voice & barcode bills.",
             time: "Just now",
             icon: "Bell",
@@ -263,13 +263,13 @@ export default function Home() {
       <aside className={`fixed inset-y-0 left-0 z-50 flex w-[264px] flex-col bg-[#10142b] text-white shadow-2xl shadow-indigo-950/10 transition-transform duration-200 lg:translate-x-0 ${mobileNavOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex h-[88px] items-center justify-between border-b border-white/10 px-6">
           <div className="flex items-center gap-3">
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-[13px] bg-gradient-to-br from-violet-400 via-indigo-400 to-blue-500 shadow-lg shadow-indigo-500/30">
-              <Sparkles className="h-5 w-5 text-white" strokeWidth={2.4} />
-              <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-[#10142b] bg-emerald-300" />
+            <div className="relative flex h-10 w-10 items-center justify-center rounded-[13px] overflow-hidden bg-slate-900 border border-white/15 shadow-lg shadow-indigo-500/20">
+              <img src="/favicon.png" alt="QBill" className="h-full w-full object-cover" />
+              <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-[#10142b] bg-emerald-400" />
             </div>
             <div>
-              <p className="font-display text-[15px] font-bold tracking-tight">QuantumVoice</p>
-              <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.2em] text-indigo-200/60">AI Billing System</p>
+              <p className="font-display text-[16px] font-extrabold tracking-tight text-white">QBill</p>
+              <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-indigo-300/80">AI Billing System</p>
             </div>
           </div>
           <button onClick={() => setMobileNavOpen(false)} className="rounded-lg p-1.5 text-white/60 hover:bg-white/10 hover:text-white lg:hidden" aria-label="Close navigation">
@@ -327,15 +327,15 @@ export default function Home() {
               <Menu className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-white shadow-sm">
-                <Store className="h-4 w-4" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-900 border border-slate-200 text-white shadow-sm overflow-hidden">
+                <img src="/favicon.png" alt="QBill" className="h-full w-full object-cover" />
               </div>
               <div className="leading-tight">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-display text-sm font-extrabold text-slate-900 truncate max-w-[130px] sm:max-w-none">{shopkeeper?.store_name || "shimadri kirana"}</span>
+                  <span className="font-display text-sm font-extrabold text-slate-900 truncate max-w-[130px] sm:max-w-none">{shopkeeper?.store_name || "QBill Store"}</span>
                   <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                 </div>
-                <p className="text-[10px] font-medium text-slate-400">POS Ready</p>
+                <p className="text-[10px] font-medium text-slate-400">QBill POS</p>
               </div>
             </div>
           </div>

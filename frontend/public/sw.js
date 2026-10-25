@@ -1,5 +1,5 @@
-// QuantumVoice Service Worker
-const CACHE_NAME = 'quantumvoice-v1';
+// QBill Service Worker
+const CACHE_NAME = 'qbill-v1';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

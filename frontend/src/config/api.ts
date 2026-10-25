@@ -1,5 +1,5 @@
 /**
- * Centralized API configuration for QuantumVoice.
+ * Centralized API configuration for QBill.
  * Defaults to http://127.0.0.1:8000 for local development,
  * and seamlessly switches to VITE_API_BASE_URL when deployed to Vercel or cloud.
  */

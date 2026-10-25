@@ -319,8 +319,8 @@ export default function VoiceBilling() {
 
       const grandTotal = calculateGrandTotal();
       
-      const upiId = (shopkeeper as any)?.upi_id || "quantumvoice@upi";
-      const storeName = shopkeeper?.business_name || "QuantumVoice Store";
+      const upiId = (shopkeeper as any)?.upi_id || "qbill@upi";
+      const storeName = shopkeeper?.business_name || "QBill Store";
       const upiPayUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(storeName)}&am=${grandTotal}&cu=INR`;
 
       let message = `*🛍️ ${storeName} Invoice*\n\n`;
@@ -765,7 +765,7 @@ export default function VoiceBilling() {
                 <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-8 shadow-2xl animate-in zoom-in-95 duration-200">
                     <button onClick={() => setShowPreview(false)} className="absolute right-4 top-4 rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600">✕</button>
                     <div className="text-center mb-6">
-                        <h2 className="text-2xl font-black text-slate-900">QuantumVoice</h2>
+                        <h2 className="text-2xl font-black text-slate-900">QBill</h2>
                         <p className="text-sm font-medium text-slate-500">Official Invoice</p>
                     </div>
                     <div className="mb-6 space-y-2 border-b border-dashed border-slate-200 pb-6 text-sm text-slate-600">
@@ -783,7 +783,7 @@ export default function VoiceBilling() {
                     <div className="flex flex-col items-center justify-center space-y-3 rounded-2xl bg-slate-50 p-6">
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Scan with GPay / PhonePe / Paytm</p>
                         <div className="rounded-xl bg-white p-3 shadow-sm border border-slate-100">
-                            <QRCode value={`upi://pay?pa=${encodeURIComponent((shopkeeper as any)?.upi_id || "quantumvoice@upi")}&pn=${encodeURIComponent(shopkeeper?.business_name || "QuantumVoice Store")}&am=${calculateGrandTotal()}&cu=INR`} size={120} level="M" />
+                            <QRCode value={`upi://pay?pa=${encodeURIComponent((shopkeeper as any)?.upi_id || "qbill@upi")}&pn=${encodeURIComponent(shopkeeper?.business_name || "QBill Store")}&am=${calculateGrandTotal()}&cu=INR`} size={120} level="M" />
                         </div>
                     </div>
                     <button onClick={() => setShowPreview(false)} className="mt-6 w-full rounded-xl bg-slate-900 py-3.5 text-sm font-bold text-white shadow-lg transition hover:bg-slate-800 active:scale-[0.98]">Close Preview</button>

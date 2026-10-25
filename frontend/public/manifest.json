@@ -1,6 +1,6 @@
 {
-  "short_name": "QuantumVoice",
-  "name": "QuantumVoice AI Billing",
+  "short_name": "QBill",
+  "name": "QBill - AI Voice & Barcode Billing",
   "description": "Smart AI Voice & Barcode Billing System",
   "icons": [
     {
