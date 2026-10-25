@@ -120,17 +120,7 @@ export default function Login() {
             {loading ? "Signing In..." : "Sign In"}
           </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setEmail("shopkeeper@example.com");
-              setPassword("password");
-              toast.info("Demo credentials filled!");
-            }}
-            className="w-full bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 text-xs font-semibold rounded-xl px-4 py-2.5 transition"
-          >
-            Fill Demo Credentials (GreenBasket Store)
-          </button>
+
         </form>
 
         <p className="text-center text-sm text-gray-400 mt-8">
