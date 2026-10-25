@@ -486,8 +486,8 @@ Respond strictly in valid JSON format like this, and nothing else:
   "grand_total": 120
 }}
 """
-                # Model cascade: Try stable models first to avoid 503 high demand spikes
-                candidate_models = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-1.5-flash']
+                # Model cascade: Try active models first to avoid 429 quota limits or 503 high demand spikes
+                candidate_models = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-2.5-flash', 'gemini-flash-latest']
                 response = None
 
                 for model_name in candidate_models:
@@ -616,15 +616,16 @@ class ImageBillingView(APIView):
                 client = genai.Client(api_key=gemini_api_key)
 
                 prompt = """
-You are an expert retail assistant. Analyze this image of groceries/products.
-Identify all the distinct products visible in the image.
-Use simple, common grocery names (e.g., "Rice", "Milk", "Soap", "Sugar", "Tea", "Biscuit").
-Do NOT estimate quantities or prices.
+You are an expert retail assistant. Analyze this image of groceries/products, store shelves, handwritten shopping list, or billing receipt.
+Identify all the distinct products/items visible in the image.
+If quantities are mentioned or visible, extract the quantity number, otherwise default quantity to 1.
+Use simple, clean grocery/product names (e.g., "Rice", "Milk", "Soap", "Sugar", "Tea", "Biscuit", "Tomato").
 Respond STRICTLY in valid JSON format matching this structure:
 {
   "items": [
     {
-      "product": "Name of the item"
+      "product": "Product Name",
+      "quantity": 1
     }
   ]
 }
@@ -636,7 +637,7 @@ Do not include any markdown formatting like ```json or any explanations. Just ou
                 image_bytes = base64.b64decode(image_data)
                 image_obj = PIL.Image.open(BytesIO(image_bytes))
 
-                candidate_models = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-1.5-flash']
+                candidate_models = ['gemini-flash-lite-latest', 'gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-flash-latest']
                 response = None
                 last_error = ""
 
@@ -660,19 +661,43 @@ Do not include any markdown formatting like ```json or any explanations. Just ou
                     elif res_text.startswith("```"):
                         res_text = res_text[3:-3].strip()
 
-                    billing_data = json.loads(res_text)
+                    parsed = json.loads(res_text)
+                    if isinstance(parsed, list):
+                        billing_data = {"items": parsed}
+                    elif isinstance(parsed, dict):
+                        billing_data = parsed
+                        if "items" not in billing_data:
+                            for k in ["products", "groceries", "data"]:
+                                if k in billing_data and isinstance(billing_data[k], list):
+                                    billing_data["items"] = billing_data[k]
+                                    break
 
             except Exception as e:
                 print("Image Gemini Error:", str(e))
 
-        # If Gemini is not configured or all models failed, signal frontend to use manual mode
-        # Do NOT fall back to random catalog products - that would show wrong data
-        if not billing_data or not billing_data.get('items'):
+        raw_items = billing_data.get('items', []) if isinstance(billing_data, dict) else []
+        normalized_items = []
+        for raw in raw_items:
+            if isinstance(raw, str):
+                normalized_items.append({"product": raw.strip(), "quantity": 1})
+            elif isinstance(raw, dict):
+                p_name = raw.get("product") or raw.get("name") or raw.get("item") or raw.get("label") or ""
+                if p_name and p_name.lower() not in ["item", "items", "box", "product", "image"]:
+                    q = raw.get("quantity") or raw.get("qty") or 1
+                    try:
+                        q = float(q)
+                    except:
+                        q = 1
+                    normalized_items.append({"product": p_name.strip(), "quantity": q})
+
+        if not normalized_items:
             return Response({
                 "success": False,
                 "manual_mode": True,
-                "error": "AI extraction unavailable. Please type the products you see in the image."
+                "error": "Could not recognize clear grocery items in this image. Please try a clearer photo or use manual entry."
             }, status=200)
+
+        billing_data = {"items": normalized_items}
 
         # Match AI-identified products with actual DB products using bidirectional matching
         db_products = Product.objects.filter(shopkeeper=shopkeeper) if shopkeeper else Product.objects.all()
