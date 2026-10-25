@@ -319,7 +319,7 @@ export default function Home() {
 
       {mobileNavOpen && <button className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-sm lg:hidden" onClick={() => setMobileNavOpen(false)} aria-label="Close navigation overlay" />}
 
-      <div className="lg:pl-[264px]">
+      <div className="lg:pl-[264px] pb-24 lg:pb-12">
         <header className="sticky top-0 z-30 flex h-[76px] items-center gap-4 border-b border-slate-200/80 bg-white/85 px-4 backdrop-blur-xl sm:px-6 lg:px-10">
           <button onClick={() => setMobileNavOpen(true)} className="rounded-xl border border-slate-200 p-2.5 text-slate-600 lg:hidden" aria-label="Open navigation"><Menu className="h-5 w-5" /></button>
           <div className="relative max-w-[380px] flex-1">
@@ -603,6 +603,51 @@ export default function Home() {
           )}
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation Bar - Effortless one-hand thumb navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t border-slate-200/90 bg-white/95 px-2 backdrop-blur-xl lg:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+        <button 
+          onClick={() => handleNav("Dashboard")}
+          className={`flex flex-1 flex-col items-center justify-center py-1 transition ${activeNav === "Dashboard" ? "text-violet-600 font-bold" : "text-slate-400 font-medium hover:text-slate-600"}`}
+        >
+          <LayoutDashboard className="h-5 w-5" strokeWidth={activeNav === "Dashboard" ? 2.4 : 1.8} />
+          <span className="text-[10px] mt-0.5">Home</span>
+        </button>
+
+        <button 
+          onClick={() => handleNav("Voice Billing")}
+          className={`flex flex-1 flex-col items-center justify-center py-1 transition ${activeNav === "Voice Billing" ? "text-violet-600 font-bold" : "text-slate-400 font-medium hover:text-slate-600"}`}
+        >
+          <div className={`flex h-8 w-8 items-center justify-center rounded-full transition ${activeNav === "Voice Billing" ? "bg-gradient-to-tr from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/30 scale-105" : "bg-violet-50 text-violet-600"}`}>
+            <Mic2 className="h-4 w-4" strokeWidth={2.4} />
+          </div>
+          <span className="text-[10px] mt-0.5 font-bold">Voice</span>
+        </button>
+
+        <button 
+          onClick={() => handleNav("Barcode Billing")}
+          className={`flex flex-1 flex-col items-center justify-center py-1 transition ${activeNav === "Barcode Billing" ? "text-violet-600 font-bold" : "text-slate-400 font-medium hover:text-slate-600"}`}
+        >
+          <ScanLine className="h-5 w-5" strokeWidth={activeNav === "Barcode Billing" ? 2.4 : 1.8} />
+          <span className="text-[10px] mt-0.5">Barcode</span>
+        </button>
+
+        <button 
+          onClick={() => handleNav("Image Billing")}
+          className={`flex flex-1 flex-col items-center justify-center py-1 transition ${activeNav === "Image Billing" ? "text-violet-600 font-bold" : "text-slate-400 font-medium hover:text-slate-600"}`}
+        >
+          <Camera className="h-5 w-5" strokeWidth={activeNav === "Image Billing" ? 2.4 : 1.8} />
+          <span className="text-[10px] mt-0.5">Photo</span>
+        </button>
+
+        <button 
+          onClick={() => handleNav("Bills")}
+          className={`flex flex-1 flex-col items-center justify-center py-1 transition ${activeNav === "Bills" ? "text-violet-600 font-bold" : "text-slate-400 font-medium hover:text-slate-600"}`}
+        >
+          <FileText className="h-5 w-5" strokeWidth={activeNav === "Bills" ? 2.4 : 1.8} />
+          <span className="text-[10px] mt-0.5">Bills</span>
+        </button>
+      </nav>
     </div>
   );
 }

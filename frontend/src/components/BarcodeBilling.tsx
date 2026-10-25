@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { Html5Qrcode } from "html5-qrcode";
 import { BrowserMultiFormatReader, DecodeHintType, BarcodeFormat } from "@zxing/library";
-import { ScanLine, Trash2, Send, CheckCircle2, AlertCircle, Upload, Image as ImageIcon, Crop as CropIcon, RefreshCw } from "lucide-react";
+import { ScanLine, Trash2, Send, CheckCircle2, AlertCircle, Upload, Image as ImageIcon, Crop as CropIcon, RefreshCw, Zap } from "lucide-react";
 import { toast } from "sonner";
 import QRCode from "react-qr-code";
 import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
@@ -31,6 +31,32 @@ export default function BarcodeBilling() {
   const [scanning, setScanning] = useState(false);
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const [autoResumeCamera, setAutoResumeCamera] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
+
+  const toggleTorch = async () => {
+    try {
+      const video = document.querySelector("#reader video") as HTMLVideoElement;
+      const stream = video?.srcObject as MediaStream;
+      const track = stream?.getVideoTracks()[0];
+      if (track) {
+        // @ts-ignore
+        const capabilities = track.getCapabilities?.() || {};
+        // @ts-ignore
+        if (capabilities.torch) {
+          // @ts-ignore
+          await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
+          setTorchOn(!torchOn);
+          toast.info(`Flashlight ${!torchOn ? "ON" : "OFF"}`);
+        } else {
+          toast.info("Flashlight not supported on this camera.");
+        }
+      } else {
+        toast.info("Camera stream is not active.");
+      }
+    } catch {
+      toast.error("Could not toggle flashlight.");
+    }
+  };
   
   // Cropping State
   const [imgSrc, setImgSrc] = useState("");
@@ -683,16 +709,40 @@ export default function BarcodeBilling() {
                     </div>
                 ) : (
                     <div className="w-full max-w-md space-y-4">
-                        <div id="reader" className="w-full overflow-hidden rounded-2xl border-4 border-slate-100 shadow-lg bg-black"></div>
+                        <div className="relative overflow-hidden rounded-2xl border-4 border-indigo-200 shadow-xl bg-black">
+                            <div id="reader" className="w-full"></div>
+                            
+                            {/* Scanning Guide Reticle Overlay */}
+                            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center p-6">
+                                <div className="relative h-40 w-64 rounded-2xl border-2 border-dashed border-emerald-400 bg-emerald-500/10 shadow-[0_0_20px_rgba(52,211,153,0.3)] flex items-center justify-center">
+                                    <span className="absolute -left-1 -top-1 h-5 w-5 border-l-4 border-t-4 border-emerald-400" />
+                                    <span className="absolute -right-1 -top-1 h-5 w-5 border-r-4 border-t-4 border-emerald-400" />
+                                    <span className="absolute -bottom-1 -left-1 h-5 w-5 border-b-4 border-l-4 border-emerald-400" />
+                                    <span className="absolute -bottom-1 -right-1 h-5 w-5 border-b-4 border-r-4 border-emerald-400" />
+                                    
+                                    <div className="absolute inset-x-2 h-0.5 bg-gradient-to-r from-transparent via-rose-500 to-transparent shadow-[0_0_10px_#f43f5e] animate-pulse" />
+                                    <span className="text-[11px] font-bold text-white/90 bg-black/60 px-3 py-1 rounded-full backdrop-blur-sm">Align Barcode Here</span>
+                                </div>
+                            </div>
+                        </div>
                         
-                        {/* Flip Camera Button */}
-                        <button
-                            type="button"
-                            onClick={handleFlipCamera}
-                            className="w-full flex items-center justify-center gap-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 border-2 border-indigo-200 py-3 text-sm font-bold text-indigo-700 shadow-sm transition active:scale-95"
-                        >
-                            <RefreshCw className="h-4 w-4" /> Flip Camera ({facingMode === "environment" ? "Switch to Front" : "Switch to Back"})
-                        </button>
+                        {/* Camera Controls Row */}
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                type="button"
+                                onClick={handleFlipCamera}
+                                className="flex items-center justify-center gap-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 py-3 text-xs font-bold text-indigo-700 shadow-sm transition active:scale-95"
+                            >
+                                <RefreshCw className="h-4 w-4" /> Flip ({facingMode === "environment" ? "Back" : "Front"})
+                            </button>
+                            <button
+                                type="button"
+                                onClick={toggleTorch}
+                                className={`flex items-center justify-center gap-1.5 rounded-xl border py-3 text-xs font-bold shadow-sm transition active:scale-95 ${torchOn ? "bg-amber-400 text-slate-900 border-amber-500" : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200"}`}
+                            >
+                                <Zap className="h-4 w-4" /> Torch: {torchOn ? "ON" : "OFF"}
+                            </button>
+                        </div>
 
                         <div className="flex flex-col sm:flex-row gap-3">
                             <button 
@@ -710,7 +760,7 @@ export default function BarcodeBilling() {
                         </div>
                         <div className="flex justify-center">
                             <label className="w-full rounded-xl bg-white border-2 border-slate-200 py-3.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 cursor-pointer flex justify-center items-center gap-2">
-                                <Upload className="h-4 w-4" /> Upload Instead
+                                <Upload className="h-4 w-4" /> Upload Barcode Photo
                                 <input 
                                     type="file" 
                                     accept="image/*" 
@@ -757,44 +807,79 @@ export default function BarcodeBilling() {
                     </div>
                 </div>
 
-                <div className="overflow-hidden rounded-2xl border border-slate-200 mb-6">
-                    <table className="w-full text-left">
+                <div className="overflow-x-auto rounded-2xl border border-slate-200 mb-6">
+                    <table className="w-full min-w-[500px] text-left">
                         <thead className="bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Product</th>
-                                <th className="px-6 py-4 w-32 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Qty</th>
-                                <th className="px-6 py-4 w-40 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Unit Price (₹)</th>
-                                <th className="px-6 py-4 w-32 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Total (₹)</th>
+                                <th className="px-4 py-3.5 text-xs font-bold uppercase tracking-wider text-slate-500">Product</th>
+                                <th className="px-3 py-3.5 w-36 text-center text-xs font-bold uppercase tracking-wider text-slate-500">Qty</th>
+                                <th className="px-3 py-3.5 w-32 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Price (₹)</th>
+                                <th className="px-3 py-3.5 w-24 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Total (₹)</th>
+                                <th className="px-2 py-3.5 w-10 text-center"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {items.map((item: any, i: number) => (
                                 <tr key={i} className="hover:bg-slate-50/50 transition">
-                                    <td className="px-6 py-4 text-sm font-semibold text-slate-800">{item.product}</td>
-                                    <td className="px-6 py-4">
-                                        <input 
-                                            type="number" min="1" value={item.quantity || ''}
-                                            onChange={(e) => handleItemChange(i, 'quantity', parseInt(e.target.value) || 0)}
-                                            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-right text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                                        />
+                                    <td className="px-4 py-3.5 text-sm font-semibold text-slate-800">
+                                        <span className="truncate max-w-[140px] sm:max-w-xs">{item.product}</span>
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-3 py-3.5">
+                                        <div className="flex items-center justify-center gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleItemChange(i, 'quantity', Math.max(1, (item.quantity || 1) - 1))}
+                                                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-base font-bold text-slate-700 active:scale-90 hover:bg-slate-200 transition"
+                                                aria-label="Decrease quantity"
+                                            >
+                                                -
+                                            </button>
+                                            <input 
+                                                type="number" min="1" value={item.quantity || ''}
+                                                onChange={(e) => handleItemChange(i, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
+                                                className="w-12 rounded-lg border border-slate-200 bg-white py-1 text-center text-sm font-bold outline-none"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => handleItemChange(i, 'quantity', (item.quantity || 1) + 1)}
+                                                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-base font-bold text-slate-700 active:scale-90 hover:bg-slate-200 transition"
+                                                aria-label="Increase quantity"
+                                            >
+                                                +
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td className="px-3 py-3.5">
                                         <input 
                                             type="number" min="0" value={item.unit_price || ''}
                                             onChange={(e) => handleItemChange(i, 'unit_price', parseInt(e.target.value) || 0)}
-                                            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-right text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                                            className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-right text-sm font-bold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                                         />
                                     </td>
-                                    <td className="px-6 py-4 text-right text-sm font-bold text-slate-900">
+                                    <td className="px-3 py-3.5 text-right text-sm font-bold text-slate-900">
                                         ₹{(item.quantity * item.unit_price) || 0}
+                                    </td>
+                                    <td className="px-2 py-3.5 text-center">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const next = items.filter((_, idx) => idx !== i);
+                                                setItems(next);
+                                                toast.info(`Removed ${item.product}`);
+                                            }}
+                                            className="rounded-lg p-1 text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition"
+                                            title="Remove item"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                         <tfoot className="bg-slate-900 text-white">
                             <tr>
-                                <td colSpan={3} className="px-6 py-4 text-right text-sm font-bold uppercase tracking-wider">Grand Total</td>
-                                <td className="px-6 py-4 text-right text-lg font-black text-emerald-400">₹{calculateGrandTotal()}</td>
+                                <td colSpan={3} className="px-4 py-3.5 text-right text-xs font-bold uppercase tracking-wider">Grand Total</td>
+                                <td colSpan={2} className="px-4 py-3.5 text-right text-lg font-black text-emerald-400">₹{calculateGrandTotal()}</td>
                             </tr>
                         </tfoot>
                     </table>

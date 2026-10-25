@@ -955,18 +955,36 @@ export default function ImageBilling() {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <input
-                        id={`qty-${i}`}
-                        type="number"
-                        min="1"
-                        value={item.quantity || ""}
-                        onChange={(e) =>
-                          handleItemChange(i, "quantity", parseInt(e.target.value) || 0)
-                        }
-                        onKeyDown={(e) => handleKeyDown(e, i, "quantity")}
-                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-right text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                      />
+                    <td className="px-3 py-3.5">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleItemChange(i, "quantity", Math.max(1, (item.quantity || 1) - 1))}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-base font-bold text-slate-700 active:scale-90 hover:bg-slate-200 transition"
+                          aria-label="Decrease quantity"
+                        >
+                          -
+                        </button>
+                        <input
+                          id={`qty-${i}`}
+                          type="number"
+                          min="1"
+                          value={item.quantity || ""}
+                          onChange={(e) =>
+                            handleItemChange(i, "quantity", Math.max(1, parseInt(e.target.value) || 1))
+                          }
+                          onKeyDown={(e) => handleKeyDown(e, i, "quantity")}
+                          className="w-12 rounded-lg border border-slate-200 bg-white py-1 text-center text-sm font-bold outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleItemChange(i, "quantity", (item.quantity || 1) + 1)}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-base font-bold text-slate-700 active:scale-90 hover:bg-slate-200 transition"
+                          aria-label="Increase quantity"
+                        >
+                          +
+                        </button>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <input

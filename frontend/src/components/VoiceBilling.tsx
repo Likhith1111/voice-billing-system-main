@@ -613,53 +613,86 @@ export default function VoiceBilling() {
                     )}
                 </div>
 
-                <div className="overflow-hidden rounded-2xl border border-slate-200 mb-6">
-                    <table className="w-full text-left">
+                <div className="overflow-x-auto rounded-2xl border border-slate-200 mb-6">
+                    <table className="w-full min-w-[500px] text-left">
                         <thead className="bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Product</th>
-                                <th className="px-6 py-4 w-32 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Qty</th>
-                                <th className="px-6 py-4 w-40 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Unit Price (₹)</th>
-                                <th className="px-6 py-4 w-32 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Total (₹)</th>
+                                <th className="px-4 py-3.5 text-xs font-bold uppercase tracking-wider text-slate-500">Product</th>
+                                <th className="px-3 py-3.5 w-36 text-center text-xs font-bold uppercase tracking-wider text-slate-500">Qty</th>
+                                <th className="px-3 py-3.5 w-32 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Price (₹)</th>
+                                <th className="px-3 py-3.5 w-24 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Total (₹)</th>
+                                <th className="px-2 py-3.5 w-10 text-center"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {items.map((item: any, i: number) => (
                                 <tr key={i} className={`transition ${item.matched_in_db === false ? 'bg-amber-50/50 hover:bg-amber-50' : 'hover:bg-slate-50/50'}`}>
-                                    <td className="px-6 py-4 text-sm font-semibold text-slate-800">
+                                    <td className="px-4 py-3.5 text-sm font-semibold text-slate-800">
                                         <div className="flex items-center gap-2">
-                                            {item.product}
+                                            <span className="truncate max-w-[140px] sm:max-w-xs">{item.product}</span>
                                             {item.matched_in_db === false && (
-                                                <span className="flex items-center gap-1 rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 uppercase" title="Not found in database. A new product will be created.">
+                                                <span className="flex items-center gap-1 rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 uppercase shrink-0" title="Not found in catalog.">
                                                     <AlertCircle className="h-3 w-3" /> New
                                                 </span>
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <input 
-                                            type="number" min="1" value={item.quantity || ''}
-                                            onChange={(e) => handleItemChange(i, 'quantity', parseInt(e.target.value) || 0)}
-                                            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-right text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                                        />
+                                    <td className="px-3 py-3.5">
+                                        <div className="flex items-center justify-center gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleItemChange(i, 'quantity', Math.max(1, (item.quantity || 1) - 1))}
+                                                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-base font-bold text-slate-700 active:scale-90 hover:bg-slate-200 transition"
+                                                aria-label="Decrease quantity"
+                                            >
+                                                -
+                                            </button>
+                                            <input 
+                                                type="number" min="1" value={item.quantity || ''}
+                                                onChange={(e) => handleItemChange(i, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
+                                                className="w-12 rounded-lg border border-slate-200 bg-white py-1 text-center text-sm font-bold outline-none"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => handleItemChange(i, 'quantity', (item.quantity || 1) + 1)}
+                                                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-base font-bold text-slate-700 active:scale-90 hover:bg-slate-200 transition"
+                                                aria-label="Increase quantity"
+                                            >
+                                                +
+                                            </button>
+                                        </div>
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-3 py-3.5">
                                         <input 
                                             type="number" min="0" value={item.unit_price || ''}
                                             onChange={(e) => handleItemChange(i, 'unit_price', parseInt(e.target.value) || 0)}
-                                            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-right text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                                            className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-right text-sm font-bold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                                         />
                                     </td>
-                                    <td className="px-6 py-4 text-right text-sm font-bold text-slate-900">
+                                    <td className="px-3 py-3.5 text-right text-sm font-bold text-slate-900">
                                         ₹{(item.quantity * item.unit_price) || 0}
+                                    </td>
+                                    <td className="px-2 py-3.5 text-center">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const next = items.filter((_, idx) => idx !== i);
+                                                setItems(next);
+                                                toast.info(`Removed ${item.product}`);
+                                            }}
+                                            className="rounded-lg p-1 text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition"
+                                            title="Remove item"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                         <tfoot className="bg-slate-900 text-white">
                             <tr>
-                                <td colSpan={3} className="px-6 py-4 text-right text-sm font-bold uppercase tracking-wider">Grand Total</td>
-                                <td className="px-6 py-4 text-right text-lg font-black text-emerald-400">₹{calculateGrandTotal()}</td>
+                                <td colSpan={3} className="px-4 py-3.5 text-right text-xs font-bold uppercase tracking-wider">Grand Total</td>
+                                <td colSpan={2} className="px-4 py-3.5 text-right text-lg font-black text-emerald-400">₹{calculateGrandTotal()}</td>
                             </tr>
                         </tfoot>
                     </table>
