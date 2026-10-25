@@ -724,9 +724,9 @@ Output only raw JSON, no markdown formatting or commentary.`;
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
+    <div className="mx-auto max-w-5xl space-y-4 pb-16 sm:pb-6">
       {/* ── Header Card ── */}
-      <div className="flex flex-col items-center rounded-2xl sm:rounded-3xl border border-indigo-100 bg-white p-4 sm:p-8 shadow-xl shadow-indigo-100/40">
+      <div className="flex flex-col items-center rounded-2xl sm:rounded-3xl border border-indigo-100 bg-white p-3.5 sm:p-8 shadow-xl shadow-indigo-100/40">
         <div className="mb-5 flex flex-col items-center text-center">
           <div className="mb-3 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-500 text-white shadow-lg shadow-indigo-500/30">
             <Camera className="h-7 w-7 sm:h-8 sm:w-8" />
@@ -853,15 +853,18 @@ Output only raw JSON, no markdown formatting or commentary.`;
           ) : (
             <div className="flex flex-col items-center space-y-4">
               {/* Image preview */}
-              <div className="relative overflow-hidden rounded-2xl border-4 border-slate-100 shadow-lg">
+              <div className="relative overflow-hidden rounded-2xl border border-slate-200 shadow-md w-full max-w-sm">
                 <img
                   src={image}
                   alt="Uploaded"
-                  className="max-h-80 w-auto object-cover"
+                  className={`w-full object-cover transition-all ${
+                    items.length > 0 ? "max-h-32 sm:max-h-60" : "max-h-64 sm:max-h-80"
+                  }`}
                 />
                 <button
                   onClick={handleClear}
-                  className="absolute right-2 top-2 rounded-full bg-slate-900/60 p-2 text-white backdrop-blur-md transition hover:bg-rose-500"
+                  className="absolute right-2 top-2 rounded-full bg-slate-900/70 p-1.5 text-white backdrop-blur-md transition hover:bg-rose-500 active:scale-90"
+                  aria-label="Remove image"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -1046,28 +1049,28 @@ Output only raw JSON, no markdown formatting or commentary.`;
         </div>
       )}
 
-      {/* ── Billing Setup (items table) ── */}
+      {/* ── Billing Setup (items table & mobile cards) ── */}
       {items.length > 0 && !manualMode && (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 rounded-3xl border border-emerald-100 bg-white p-8 shadow-xl shadow-emerald-100/50">
-          <div className="mb-6 flex items-start justify-between">
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 rounded-2xl sm:rounded-3xl border border-emerald-100 bg-white p-3.5 sm:p-7 shadow-xl shadow-emerald-100/40">
+          <div className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-display text-2xl font-bold text-slate-900">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-display text-xl sm:text-2xl font-bold text-slate-900">
                   Billing Setup
                 </h3>
-                <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-700">
                   <CheckCircle2 className="h-3.5 w-3.5" /> Products Ready
                 </span>
               </div>
-              <p className="mt-1 text-sm text-slate-500">
-                Fill in the quantity and unit price for each item.
+              <p className="mt-0.5 text-xs sm:text-sm text-slate-500">
+                Verify quantity and unit price for each item.
               </p>
             </div>
             {/* Add more items (manual mode) */}
             {image && (
               <button
                 onClick={() => setManualMode(true)}
-                className="flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100"
+                className="self-start sm:self-auto flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 active:scale-95"
               >
                 <Plus className="h-3.5 w-3.5" /> Add Item
               </button>
@@ -1131,7 +1134,140 @@ Output only raw JSON, no markdown formatting or commentary.`;
             </div>
           )}
 
-          <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200">
+          {/* ── Mobile Card List (< md) ── */}
+          <div className="md:hidden space-y-3 mb-5">
+            {items.map((item, i) => (
+              <div
+                key={i}
+                className={`rounded-2xl border p-3.5 shadow-sm transition ${
+                  item.matched_in_db === false
+                    ? "border-amber-200 bg-amber-50/50"
+                    : "border-slate-200 bg-slate-50/60"
+                }`}
+              >
+                {/* Top: Product Name + Tag + Delete Button */}
+                <div className="flex items-start justify-between gap-2 mb-2.5">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-slate-900 leading-snug break-words">
+                      {item.product}
+                    </p>
+                    {item.matched_in_db === false && (
+                      <span className="inline-flex items-center gap-1 mt-1 rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 uppercase">
+                        <AlertCircle className="h-3 w-3" /> New — Enter Price
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeItem(i)}
+                    className="shrink-0 rounded-xl p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 active:scale-90 transition"
+                    aria-label={`Remove ${item.product}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Middle Grid: Qty + Unit Price */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="rounded-xl border border-slate-200/80 bg-white p-2">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                      Qty
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleItemChange(
+                            i,
+                            "quantity",
+                            Math.max(1, (item.quantity || 1) - 1)
+                          )
+                        }
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-base font-bold text-slate-700 active:scale-90"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min="1"
+                        value={item.quantity || ""}
+                        onChange={(e) =>
+                          handleItemChange(
+                            i,
+                            "quantity",
+                            Math.max(1, parseInt(e.target.value) || 1)
+                          )
+                        }
+                        className="w-10 text-center text-sm font-bold text-slate-800 outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleItemChange(
+                            i,
+                            "quantity",
+                            (item.quantity || 1) + 1
+                          )
+                        }
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-base font-bold text-slate-700 active:scale-90"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200/80 bg-white p-2">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                      Price (₹)
+                    </p>
+                    <div className="flex items-center h-8">
+                      <span className="text-slate-400 text-sm font-bold mr-1">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={item.unit_price || ""}
+                        onChange={(e) =>
+                          handleItemChange(
+                            i,
+                            "unit_price",
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
+                        className="w-full text-right text-sm font-bold text-slate-800 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom: Item Total */}
+                <div className="mt-2.5 flex items-center justify-between border-t border-slate-200/60 pt-2 text-xs">
+                  <span className="text-slate-500 font-medium">Item Total</span>
+                  <span className="text-sm font-black text-slate-900">
+                    ₹{((item.quantity || 1) * (item.unit_price || 0)).toFixed(0)}
+                  </span>
+                </div>
+              </div>
+            ))}
+
+            {/* Mobile Grand Total Banner */}
+            <div className="rounded-2xl bg-slate-900 p-4 text-white flex justify-between items-center shadow-lg">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Grand Total ({items.length} {items.length === 1 ? "item" : "items"})
+                </p>
+                <p className="text-2xl font-black text-emerald-400">
+                  ₹{calculateGrandTotal()}
+                </p>
+              </div>
+              <span className="rounded-lg bg-emerald-500/20 px-2.5 py-1 text-xs font-bold text-emerald-300">
+                Ready to Bill
+              </span>
+            </div>
+          </div>
+
+          {/* ── Desktop table (≥ md) ── */}
+          <div className="hidden md:block mb-6 overflow-hidden rounded-2xl border border-slate-200">
             <table className="w-full text-left">
               <thead className="border-b border-slate-200 bg-slate-50">
                 <tr>
@@ -1245,45 +1381,50 @@ Output only raw JSON, no markdown formatting or commentary.`;
           </div>
 
           {/* Customer name */}
-          <div className="mb-6 rounded-2xl bg-slate-50 p-5">
-            <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+          <div className="mb-5 rounded-2xl bg-slate-50 p-3.5 sm:p-5 border border-slate-100">
+            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500">
               Customer Name (Optional)
             </label>
             <input
               type="text"
-              placeholder="Leave blank for Walk-in Customer"
+              placeholder="Walk-in Customer"
               value={billCustomerName}
               onChange={(e) => setBillCustomerName(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-violet-300 focus:ring-4 focus:ring-violet-100/70"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-violet-300 focus:ring-4 focus:ring-violet-100/70"
             />
           </div>
 
-          {/* Action buttons */}
-          <div className="flex flex-wrap justify-end gap-3">
-            <button
-              onClick={handleClear}
-              className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-6 py-3.5 text-sm font-bold text-rose-600 shadow-sm transition hover:bg-rose-100 active:scale-[0.98]"
-            >
-              <Trash2 className="h-4 w-4" /> Clear All
-            </button>
-            <button
-              onClick={() => setShowPreview(true)}
-              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-indigo-600 active:scale-[0.98]"
-            >
-              Preview Bill
-            </button>
-            <button
-              onClick={sendToWhatsApp}
-              className="flex items-center gap-2 rounded-xl bg-[#25D366] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#25D366]/30 transition hover:bg-[#20bd5a] active:scale-[0.98]"
-            >
-              <Send className="h-4 w-4" /> Send to WhatsApp
-            </button>
+          {/* Action buttons (Mobile First) */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2.5">
             <button
               onClick={handleCompleteSale}
-              className="flex items-center gap-2 rounded-xl bg-violet-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-600/30 transition hover:bg-violet-700 active:scale-[0.98]"
+              className="w-full sm:w-auto order-1 sm:order-4 flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-600/30 transition hover:bg-violet-700 active:scale-[0.98]"
             >
-              <CheckCircle2 className="h-4 w-4" /> Complete Sale
+              <CheckCircle2 className="h-4 w-4" /> Complete Sale (₹{calculateGrandTotal()})
             </button>
+
+            <div className="grid grid-cols-3 sm:flex sm:flex-row gap-2 order-2 sm:order-1 w-full sm:w-auto">
+              <button
+                onClick={sendToWhatsApp}
+                className="flex items-center justify-center gap-1.5 rounded-xl bg-[#25D366] px-3 sm:px-5 py-3 text-xs sm:text-sm font-bold text-white shadow-md shadow-[#25D366]/20 transition hover:bg-[#20bd5a] active:scale-[0.98]"
+              >
+                <Send className="h-3.5 w-3.5" /> WhatsApp
+              </button>
+
+              <button
+                onClick={() => setShowPreview(true)}
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 sm:px-5 py-3 text-xs sm:text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.98]"
+              >
+                Preview
+              </button>
+
+              <button
+                onClick={handleClear}
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 sm:px-5 py-3 text-xs sm:text-sm font-bold text-rose-600 shadow-sm transition hover:bg-rose-100 active:scale-[0.98]"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Clear
+              </button>
+            </div>
           </div>
         </div>
       )}
