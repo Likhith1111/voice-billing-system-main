@@ -120,6 +120,29 @@ export function registerShopkeeperOffline(data: {
   return { success: true, shopkeeper: newShopkeeper };
 }
 
+export const BUILTIN_ACCOUNTS: Shopkeeper[] = [
+  {
+    id: 1,
+    name: "Rajesh Kumar",
+    email: "shopkeeper@example.com",
+    password: "password",
+    store_name: "GreenBasket Store",
+    phone: "9876543210",
+    address: "MG Road Market, Bengaluru",
+    upi_id: "rajeshkumar@upi",
+  },
+  {
+    id: 2,
+    name: "likith Simhadri",
+    email: "likithsimhadri99@gmail.com",
+    password: "Iqoo@neo",
+    store_name: "shimadri kirana",
+    phone: "9876543210",
+    address: "shimadri kirana, Main Market",
+    upi_id: "likithsimhadri99@upi",
+  }
+];
+
 // Authenticate shopkeeper offline
 export function loginShopkeeperOffline(
   email: string,
@@ -128,31 +151,34 @@ export function loginShopkeeperOffline(
   const cleanEmail = email.trim().toLowerCase();
   const cleanPassword = password?.trim() || "";
 
-  // Check stored shopkeepers
+  // 1. Check builtin / pre-registered accounts first
+  const builtin = BUILTIN_ACCOUNTS.find((s) => s.email.toLowerCase() === cleanEmail);
+  if (builtin) {
+    if (!builtin.password || builtin.password === cleanPassword || builtin.password.toLowerCase() === cleanPassword.toLowerCase()) {
+      initializeStoreProducts(cleanEmail);
+      return { success: true, shopkeeper: builtin };
+    }
+  }
+
+  // 2. Check stored shopkeepers created in app
   const shopkeepers = getStoredShopkeepers();
   const found = shopkeepers.find((s) => s.email.toLowerCase() === cleanEmail);
 
   if (found) {
-    if (!found.password || found.password === cleanPassword) {
+    if (!found.password || found.password === cleanPassword || found.password.toLowerCase() === cleanPassword.toLowerCase()) {
+      initializeStoreProducts(cleanEmail);
       return { success: true, shopkeeper: found };
     }
   }
 
-  // Fallback demo account
+  // 3. Fallback demo account
   if (
     cleanEmail === "shopkeeper@example.com" ||
     cleanEmail === "demo" ||
     cleanEmail === "admin"
   ) {
-    const demo: Shopkeeper = {
-      id: 1,
-      name: "Rajesh Kumar",
-      email: "shopkeeper@example.com",
-      store_name: "GreenBasket Store",
-      phone: "9876543210",
-      address: "MG Road Market, Bengaluru",
-      upi_id: "rajeshkumar@upi",
-    };
+    const demo = BUILTIN_ACCOUNTS[0];
+    initializeStoreProducts(cleanEmail);
     return { success: true, shopkeeper: demo };
   }
 
