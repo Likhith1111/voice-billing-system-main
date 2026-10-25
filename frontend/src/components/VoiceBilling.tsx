@@ -92,8 +92,9 @@ export default function VoiceBilling() {
 
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.interimResults = false;  // Only use final results to avoid duplicate interim re-fires on restart
     recognition.lang = lang;
+    recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
       setIsRecording(true);
@@ -102,23 +103,21 @@ export default function VoiceBilling() {
     };
 
     recognition.onresult = (event: any) => {
-      let interim = "";
+      // Only process genuinely new final results from this event batch
       let newFinals = "";
-
       for (let i = event.resultIndex; i < event.results.length; i++) {
         if (event.results[i].isFinal) {
-          newFinals += event.results[i][0].transcript + " ";
-        } else {
-          interim += event.results[i][0].transcript;
+          const text = event.results[i][0].transcript.trim();
+          if (text) newFinals += text + " ";
         }
       }
 
       if (newFinals) {
         accumulatedTranscriptRef.current += newFinals;
+        setTranscript(accumulatedTranscriptRef.current.trim());
       }
-
-      setTranscript((accumulatedTranscriptRef.current + interim).trim());
     };
+
 
     recognition.onerror = (event: any) => {
       console.warn("Speech recognition notice:", event.error);
