@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Home from "./pages/Home";
 
 import Register from "./pages/Register";
+import InstallAppBanner from "./components/InstallAppBanner";
 
 // --- Auth Context ---
 interface AuthContextType {
@@ -87,6 +88,7 @@ function App() {
           <TooltipProvider>
             <Toaster />
             <Router />
+            <InstallAppBanner />
           </TooltipProvider>
         </AuthContext.Provider>
       </ThemeProvider>
