@@ -605,7 +605,7 @@ export default function VoiceBilling() {
         </div>
 
         {items.length > 0 && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 rounded-3xl border border-emerald-100 bg-white p-8 shadow-xl shadow-emerald-100/50">
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 rounded-3xl border border-emerald-100 bg-white p-4 sm:p-8 shadow-xl shadow-emerald-100/50">
                 <div className="mb-6 flex items-start justify-between">
                     <div>
                         <div className="flex items-center gap-2">
@@ -624,7 +624,55 @@ export default function VoiceBilling() {
                     )}
                 </div>
 
-                <div className="overflow-x-auto rounded-2xl border border-slate-200 mb-6">
+                {/* ── Mobile card list (< md) ── */}
+                <div className="md:hidden space-y-3 mb-6">
+                    {items.map((item: any, i: number) => (
+                        <div key={i} className={`rounded-2xl border p-4 ${item.matched_in_db === false ? 'border-amber-200 bg-amber-50/40' : 'border-slate-200 bg-slate-50/50'}`}>
+                            <div className="flex items-start justify-between gap-2 mb-3">
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-bold text-slate-800 leading-snug">{item.product}</p>
+                                    {item.matched_in_db === false && (
+                                        <span className="inline-flex items-center gap-1 mt-1 rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 uppercase">
+                                            <AlertCircle className="h-3 w-3" /> New
+                                        </span>
+                                    )}
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => { const next = items.filter((_, idx) => idx !== i); setItems(next); toast.info(`Removed ${item.product}`); }}
+                                    className="flex-shrink-0 rounded-xl p-2 text-slate-300 hover:bg-rose-50 hover:text-rose-600 active:scale-90 transition"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Quantity</p>
+                                    <div className="flex items-center gap-1">
+                                        <button type="button" onClick={() => handleItemChange(i, 'quantity', Math.max(1, (item.quantity || 1) - 1))} className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-base font-bold text-slate-700 active:scale-90 transition">-</button>
+                                        <input type="number" min="1" value={item.quantity || ''} onChange={(e) => handleItemChange(i, 'quantity', Math.max(1, parseInt(e.target.value) || 1))} className="w-12 rounded-xl border border-slate-200 bg-white py-1.5 text-center text-sm font-bold outline-none" />
+                                        <button type="button" onClick={() => handleItemChange(i, 'quantity', (item.quantity || 1) + 1)} className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-base font-bold text-slate-700 active:scale-90 transition">+</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Price (₹)</p>
+                                    <input type="number" min="0" value={item.unit_price || ''} onChange={(e) => handleItemChange(i, 'unit_price', parseInt(e.target.value) || 0)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-bold outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" />
+                                </div>
+                            </div>
+                            <div className="mt-3 flex justify-between items-center border-t border-slate-200 pt-3">
+                                <p className="text-xs text-slate-500 font-medium">Item Total</p>
+                                <p className="text-base font-black text-slate-900">₹{(item.quantity * item.unit_price) || 0}</p>
+                            </div>
+                        </div>
+                    ))}
+                    <div className="rounded-2xl bg-slate-900 p-4 flex justify-between items-center">
+                        <p className="text-sm font-bold uppercase tracking-wider text-white">Grand Total</p>
+                        <p className="text-xl font-black text-emerald-400">₹{calculateGrandTotal()}</p>
+                    </div>
+                </div>
+
+                {/* ── Desktop table (≥ md) ── */}
+                <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-200 mb-6">
                     <table className="w-full min-w-[500px] text-left">
                         <thead className="bg-slate-50 border-b border-slate-200">
                             <tr>
@@ -642,60 +690,23 @@ export default function VoiceBilling() {
                                         <div className="flex items-center gap-2">
                                             <span className="truncate max-w-[140px] sm:max-w-xs">{item.product}</span>
                                             {item.matched_in_db === false && (
-                                                <span className="flex items-center gap-1 rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 uppercase shrink-0" title="Not found in catalog.">
-                                                    <AlertCircle className="h-3 w-3" /> New
-                                                </span>
+                                                <span className="flex items-center gap-1 rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 uppercase shrink-0"><AlertCircle className="h-3 w-3" /> New</span>
                                             )}
                                         </div>
                                     </td>
                                     <td className="px-3 py-3.5">
                                         <div className="flex items-center justify-center gap-1">
-                                            <button
-                                                type="button"
-                                                onClick={() => handleItemChange(i, 'quantity', Math.max(1, (item.quantity || 1) - 1))}
-                                                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-base font-bold text-slate-700 active:scale-90 hover:bg-slate-200 transition"
-                                                aria-label="Decrease quantity"
-                                            >
-                                                -
-                                            </button>
-                                            <input 
-                                                type="number" min="1" value={item.quantity || ''}
-                                                onChange={(e) => handleItemChange(i, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
-                                                className="w-12 rounded-lg border border-slate-200 bg-white py-1 text-center text-sm font-bold outline-none"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => handleItemChange(i, 'quantity', (item.quantity || 1) + 1)}
-                                                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-base font-bold text-slate-700 active:scale-90 hover:bg-slate-200 transition"
-                                                aria-label="Increase quantity"
-                                            >
-                                                +
-                                            </button>
+                                            <button type="button" onClick={() => handleItemChange(i, 'quantity', Math.max(1, (item.quantity || 1) - 1))} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-base font-bold text-slate-700 active:scale-90 hover:bg-slate-200 transition">-</button>
+                                            <input type="number" min="1" value={item.quantity || ''} onChange={(e) => handleItemChange(i, 'quantity', Math.max(1, parseInt(e.target.value) || 1))} className="w-12 rounded-lg border border-slate-200 bg-white py-1 text-center text-sm font-bold outline-none" />
+                                            <button type="button" onClick={() => handleItemChange(i, 'quantity', (item.quantity || 1) + 1)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-base font-bold text-slate-700 active:scale-90 hover:bg-slate-200 transition">+</button>
                                         </div>
                                     </td>
                                     <td className="px-3 py-3.5">
-                                        <input 
-                                            type="number" min="0" value={item.unit_price || ''}
-                                            onChange={(e) => handleItemChange(i, 'unit_price', parseInt(e.target.value) || 0)}
-                                            className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-right text-sm font-bold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                                        />
+                                        <input type="number" min="0" value={item.unit_price || ''} onChange={(e) => handleItemChange(i, 'unit_price', parseInt(e.target.value) || 0)} className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-right text-sm font-bold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
                                     </td>
-                                    <td className="px-3 py-3.5 text-right text-sm font-bold text-slate-900">
-                                        ₹{(item.quantity * item.unit_price) || 0}
-                                    </td>
+                                    <td className="px-3 py-3.5 text-right text-sm font-bold text-slate-900">₹{(item.quantity * item.unit_price) || 0}</td>
                                     <td className="px-2 py-3.5 text-center">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                const next = items.filter((_, idx) => idx !== i);
-                                                setItems(next);
-                                                toast.info(`Removed ${item.product}`);
-                                            }}
-                                            className="rounded-lg p-1 text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition"
-                                            title="Remove item"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
+                                        <button type="button" onClick={() => { const next = items.filter((_, idx) => idx !== i); setItems(next); toast.info(`Removed ${item.product}`); }} className="rounded-lg p-1 text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition"><Trash2 className="h-4 w-4" /></button>
                                     </td>
                                 </tr>
                             ))}
@@ -720,28 +731,29 @@ export default function VoiceBilling() {
                     />
                 </div>
 
-                <div className="flex justify-end gap-3">
+                {/* Action buttons — 2×2 grid on mobile, single row on desktop */}
+                <div className="grid grid-cols-2 gap-3 md:flex md:justify-end md:gap-3">
                     <button 
                         onClick={handleClear}
-                        className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-6 py-3.5 text-sm font-bold text-rose-600 shadow-sm transition hover:bg-rose-100 active:scale-[0.98]"
+                        className="flex items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3.5 text-sm font-bold text-rose-600 shadow-sm transition hover:bg-rose-100 active:scale-[0.98]"
                     >
                         <Trash2 className="h-4 w-4" /> Clear
                     </button>
                     <button 
                         onClick={() => setShowPreview(true)}
-                        className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-indigo-600 active:scale-[0.98]"
+                        className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-indigo-600 active:scale-[0.98]"
                     >
                         Preview
                     </button>
                     <button 
                         onClick={sendToWhatsApp}
-                        className="flex items-center gap-2 rounded-xl bg-[#25D366] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#25D366]/30 transition hover:bg-[#20bd5a] active:scale-[0.98]"
+                        className="flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#25D366]/30 transition hover:bg-[#20bd5a] active:scale-[0.98]"
                     >
-                        <Send className="h-4 w-4" /> Send to WhatsApp
+                        <Send className="h-4 w-4" /> WhatsApp
                     </button>
                     <button 
                         onClick={handleCompleteSale}
-                        className="flex items-center gap-2 rounded-xl bg-violet-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-600/30 transition hover:bg-violet-700 active:scale-[0.98]"
+                        className="flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-600/30 transition hover:bg-violet-700 active:scale-[0.98]"
                     >
                         <CheckCircle2 className="h-4 w-4" /> Complete Sale
                     </button>
