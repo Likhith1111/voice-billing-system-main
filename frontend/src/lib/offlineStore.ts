@@ -238,3 +238,226 @@ export function addStoreBill(bill: any, email?: string): any {
   localStorage.setItem(`quantum_bills_${storeEmail}`, JSON.stringify(bills));
   return newBill;
 }
+
+// Customers helpers
+export const DEFAULT_CUSTOMERS = [
+  { id: 1, name: "Ramesh Sharma", phone: "9876543210", initials: "RS", tone: "violet" },
+  { id: 2, name: "Priya Patel", phone: "9812345678", initials: "PP", tone: "blue" },
+  { id: 3, name: "Anil Verma", phone: "9988776655", initials: "AV", tone: "green" },
+];
+
+export function getStoreCustomers(email?: string): any[] {
+  const storeEmail = (email || "default").toLowerCase();
+  const key = `quantum_customers_${storeEmail}`;
+  const stored = localStorage.getItem(key);
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch {}
+  }
+  return DEFAULT_CUSTOMERS;
+}
+
+export function saveStoreCustomers(customers: any[], email?: string) {
+  const storeEmail = (email || "default").toLowerCase();
+  const key = `quantum_customers_${storeEmail}`;
+  localStorage.setItem(key, JSON.stringify(customers));
+}
+
+export function addStoreCustomer(customer: any, email?: string): any {
+  const customers = getStoreCustomers(email);
+  const newCustomer = {
+    id: customer.id || Date.now(),
+    name: customer.name || "Customer",
+    phone: customer.phone || "",
+    initials: customer.initials || (customer.name ? customer.name.substring(0, 2).toUpperCase() : "CU"),
+    tone: customer.tone || "violet",
+  };
+  const updated = [newCustomer, ...customers.filter((c) => c.phone !== newCustomer.phone)];
+  saveStoreCustomers(updated, email);
+  return newCustomer;
+}
+
+// Shopkeeper profile update helper
+export function updateShopkeeperProfileOffline(data: any): Shopkeeper {
+  const email = (data.current_email || data.email || "").toLowerCase().trim();
+  const shopkeepers = getStoredShopkeepers();
+  let updatedShopkeeper: Shopkeeper | null = null;
+
+  const updatedList = shopkeepers.map((s) => {
+    if (s.email.toLowerCase() === email) {
+      updatedShopkeeper = {
+        ...s,
+        name: data.name || (data as any).shopkeeper_name || s.name,
+        store_name: data.store_name || (data as any).storeName || s.store_name,
+        phone: data.phone || s.phone,
+        address: data.address || s.address,
+        upi_id: data.upi_id || s.upi_id,
+        ...(data.password ? { password: data.password } : {}),
+      };
+      return updatedShopkeeper;
+    }
+    return s;
+  });
+
+  if (!updatedShopkeeper) {
+    const builtin = BUILTIN_ACCOUNTS.find((s) => s.email.toLowerCase() === email);
+    updatedShopkeeper = {
+      id: builtin?.id || Date.now(),
+      name: data.name || builtin?.name || "Shopkeeper",
+      email: email,
+      store_name: data.store_name || (data as any).storeName || builtin?.store_name || "Smart Kirana",
+      phone: data.phone || builtin?.phone || "9876543210",
+      address: data.address || builtin?.address || "Main Market",
+      upi_id: data.upi_id || builtin?.upi_id || `${email.split("@")[0]}@upi`,
+      ...(data.password ? { password: data.password } : {}),
+    };
+    updatedList.push(updatedShopkeeper);
+  }
+
+  localStorage.setItem("quantum_shopkeepers", JSON.stringify(updatedList));
+  localStorage.setItem("quantum_current_shopkeeper", JSON.stringify(updatedShopkeeper));
+  return updatedShopkeeper;
+}
+
+// Smart Offline Voice Bill Parser
+const NUMBER_WORDS: Record<string, number> = {
+  zero: 0,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+  thirteen: 13,
+  fourteen: 14,
+  fifteen: 15,
+  sixteen: 16,
+  seventeen: 17,
+  eighteen: 18,
+  nineteen: 19,
+  twenty: 20,
+  thirty: 30,
+  forty: 40,
+  fifty: 50,
+  half: 1,
+  quarter: 1,
+};
+
+export function parseVoiceBillLocally(rawText: string, email?: string): { success: boolean; items: any[]; total_amount: number } {
+  if (!rawText || !rawText.trim()) {
+    return { success: false, items: [], total_amount: 0 };
+  }
+
+  const catalog = getStoreProducts(email);
+  let text = rawText.toLowerCase().replace(/[^\w\s,\.]/g, " ");
+
+  // Convert number words to digits
+  Object.entries(NUMBER_WORDS).forEach(([word, num]) => {
+    const regex = new RegExp(`\\b${word}\\b`, "gi");
+    text = text.replace(regex, ` ${num} `);
+  });
+
+  // Segment by delimiters or newly starting numbers
+  const segmented = text
+    .replace(/\b(and|then|plus|also|along with)\b/gi, ",")
+    .replace(/([a-z])\s+(\d+)\b/g, "$1 , $2");
+
+  const clauses = segmented
+    .split(/[,.]/)
+    .map((c) => c.trim())
+    .filter((c) => c.length > 0);
+
+  const parsedItems: any[] = [];
+
+  for (const clause of clauses) {
+    const numMatch = clause.match(/\b(\d+)\b/);
+    const quantity = numMatch ? parseInt(numMatch[1], 10) : 1;
+
+    const cleanedPhrase = clause
+      .replace(/\b\d+\b/g, " ")
+      .replace(
+        /\b(packets?|packs?|kg|kgs|kilo|kilos|gm|grams?|liter|liters?|ltr|bottle|bottles?|piece|pieces?|box|boxes?|rupees?|rs|of|the|a|an)\b/gi,
+        " "
+      )
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!cleanedPhrase) continue;
+
+    let bestMatch: ProductItem | null = null;
+    let highestScore = 0;
+
+    const phraseTokens = cleanedPhrase.split(" ").filter((t) => t.length > 1);
+
+    for (const prod of catalog) {
+      const prodName = prod.name.toLowerCase();
+      let score = 0;
+
+      if (prodName.includes(cleanedPhrase)) {
+        score += 10 + cleanedPhrase.length;
+      }
+
+      for (const token of phraseTokens) {
+        if (prodName.includes(token)) {
+          score += 3 + token.length;
+        }
+      }
+
+      if (score > highestScore) {
+        highestScore = score;
+        bestMatch = prod;
+      }
+    }
+
+    if (bestMatch && highestScore >= 3) {
+      const unitPrice =
+        bestMatch.price ||
+        parseInt(bestMatch.value.replace(/[^0-9]/g, ""), 10) ||
+        0;
+
+      const existing = parsedItems.find((i) => i.product === bestMatch!.name);
+      if (existing) {
+        existing.quantity += quantity;
+      } else {
+        parsedItems.push({
+          product: bestMatch.name,
+          quantity: quantity,
+          unit_price: unitPrice,
+          matched_in_db: true,
+        });
+      }
+    } else {
+      const capitalized =
+        cleanedPhrase.charAt(0).toUpperCase() + cleanedPhrase.slice(1);
+      const existing = parsedItems.find((i) => i.product === capitalized);
+      if (existing) {
+        existing.quantity += quantity;
+      } else {
+        parsedItems.push({
+          product: capitalized,
+          quantity: quantity,
+          unit_price: 0,
+          matched_in_db: false,
+        });
+      }
+    }
+  }
+
+  const grandTotal = parsedItems.reduce(
+    (acc, curr) => acc + curr.quantity * curr.unit_price,
+    0
+  );
+
+  return {
+    success: parsedItems.length > 0,
+    items: parsedItems,
+    total_amount: grandTotal,
+  };
+}

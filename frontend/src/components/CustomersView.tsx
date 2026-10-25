@@ -4,6 +4,7 @@ import { Users, Plus, Edit2, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../App';
 import { apiUrl } from '../config/api';
+import { getStoreCustomers, saveStoreCustomers } from '../lib/offlineStore';
 
 const avatarStyles: Record<string, string> = {
   violet: "bg-violet-100 text-violet-700",
@@ -29,15 +30,20 @@ export default function CustomersView() {
 
   const fetchCustomers = () => {
     setLoading(true);
+    const local = getStoreCustomers(shopkeeper?.email);
+    setCustomers(local);
     axios.get(apiUrl('/api/customers/'), {
-      params: { shopkeeper_email: shopkeeper?.email }
+      params: { shopkeeper_email: shopkeeper?.email },
+      timeout: 2500
     })
       .then(res => {
-        setCustomers(res.data);
+        if (res.data && res.data.length > 0) {
+          setCustomers(res.data);
+          saveStoreCustomers(res.data, shopkeeper?.email);
+        }
         setLoading(false);
       })
-      .catch(err => {
-        toast.error('Failed to load customers');
+      .catch(() => {
         setLoading(false);
       });
   };
@@ -83,29 +89,43 @@ export default function CustomersView() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const currentList = getStoreCustomers(shopkeeper?.email);
+    let updatedList: any[];
+
+    if (editingCustomer) {
+      updatedList = currentList.map(c => c.id === editingCustomer.id ? { ...c, ...formData } : c);
+    } else {
+      const newCust = {
+        id: Date.now(),
+        ...formData
+      };
+      updatedList = [newCust, ...currentList];
+    }
+
+    saveStoreCustomers(updatedList, shopkeeper?.email);
+    setCustomers(updatedList);
+    setShowModal(false);
+    toast.success(editingCustomer ? 'Customer updated' : 'Customer added');
+
     const url = editingCustomer 
       ? apiUrl(`/api/customers/${editingCustomer.id}/`)
       : apiUrl('/api/customers/');
-    
     const method = editingCustomer ? 'put' : 'post';
 
-    axios[method](url, { ...formData, shopkeeper_email: shopkeeper?.email })
-      .then(() => {
-        toast.success(editingCustomer ? 'Customer updated' : 'Customer added');
-        setShowModal(false);
-        fetchCustomers();
-      })
-      .catch(() => toast.error('Failed to save customer'));
+    axios[method](url, { ...formData, shopkeeper_email: shopkeeper?.email }, { timeout: 2500 })
+      .catch(() => console.warn('Customer backend sync deferred'));
   };
 
   const handleDelete = (id: number) => {
     if (confirm('Are you sure you want to delete this customer?')) {
-      axios.delete(apiUrl(`/api/customers/${id}/`))
-        .then(() => {
-          toast.success('Customer deleted');
-          fetchCustomers();
-        })
-        .catch(() => toast.error('Failed to delete customer'));
+      const currentList = getStoreCustomers(shopkeeper?.email);
+      const updatedList = currentList.filter(c => c.id !== id);
+      saveStoreCustomers(updatedList, shopkeeper?.email);
+      setCustomers(updatedList);
+      toast.success('Customer deleted');
+
+      axios.delete(apiUrl(`/api/customers/${id}/`), { timeout: 2500 })
+        .catch(() => console.warn('Customer backend delete deferred'));
     }
   };
 

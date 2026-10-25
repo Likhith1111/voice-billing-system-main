@@ -11,6 +11,14 @@ import { useAuth } from "../App";
 import UpiPaymentModal from "./UpiPaymentModal";
 import PaymentModeModal, { type PaymentMode } from "./PaymentModeModal";
 import { apiUrl } from "../config/api";
+import {
+  getStoreProducts,
+  saveStoreProducts,
+  addStoreBill,
+  getStoreCustomers,
+  addStoreCustomer,
+  type ProductItem,
+} from "../lib/offlineStore";
 
 export default function BarcodeBilling() {
   const { shopkeeper } = useAuth();
@@ -129,15 +137,45 @@ export default function BarcodeBilling() {
       playBeep();
       if (navigator.vibrate) navigator.vibrate(100);
 
+      const cleanCode = decodedText.trim();
+
+      // 1. Check offline catalog first (instant & works 100% on mobile without backend dependency)
+      const localProducts = getStoreProducts(shopkeeper?.email);
+      const localMatch = localProducts.find(
+          p => p.barcode === cleanCode || 
+               p.barcode.endsWith(cleanCode) || 
+               cleanCode.endsWith(p.barcode)
+      );
+
+      if (localMatch) {
+          const price = localMatch.price || parseInt(localMatch.value.replace(/[^0-9]/g, '')) || 0;
+          setItems(prev => {
+              const existing = prev.find(i => i.product.toLowerCase() === localMatch.name.toLowerCase());
+              if (existing) {
+                  return prev.map(i => i.product.toLowerCase() === localMatch.name.toLowerCase() ? { ...i, quantity: i.quantity + 1 } : i);
+              } else {
+                  return [...prev, { product: localMatch.name, quantity: 1, unit_price: price }];
+              }
+          });
+          toast.success(`Added ${localMatch.name} (₹${price})`);
+          if (resumeCamera) setTimeout(() => setScanning(true), 1500);
+          return;
+      }
+
+      // 2. If not found locally, query backend with a quick timeout
       try {
-          const response = await axios.get(apiUrl(`/api/products/?barcode=${decodedText}`), {
-              params: { shopkeeper_email: shopkeeper?.email }
+          const response = await axios.get(apiUrl(`/api/products/?barcode=${encodeURIComponent(cleanCode)}`), {
+              params: { shopkeeper_email: shopkeeper?.email },
+              timeout: 2000
           });
           if (response.data && response.data.length > 0) {
               const product = response.data[0];
               const priceStr = product.value.replace('₹', '').replace(',', '');
               const price = parseInt(priceStr) || 0;
               
+              // Save to offline catalog so next scan is instant
+              saveStoreProducts([product, ...localProducts], shopkeeper?.email);
+
               setItems(prev => {
                   const existing = prev.find(i => i.product === product.name);
                   if (existing) {
@@ -147,17 +185,17 @@ export default function BarcodeBilling() {
                   }
               });
               toast.success(`Added ${product.name}`);
-              // Resume scanning
               if (resumeCamera) setTimeout(() => setScanning(true), 1500);
-          } else {
-              setNewBarcode(decodedText);
-              setShowNewProductModal(true);
+              return;
           }
       } catch (err) {
-          console.error("Failed to look up barcode", err);
-          toast.error("Error looking up product.");
-          if (resumeCamera) setTimeout(() => setScanning(true), 1500);
+          console.warn("Backend barcode lookup unavailable:", err);
       }
+
+      // 3. If barcode is unknown in both local catalog & backend, open modal to register it
+      setNewBarcode(cleanCode);
+      setShowNewProductModal(true);
+      toast.info(`Barcode ${cleanCode} not in catalog. Add product details to save.`);
   };
 
   const onScanFailure = (error: any) => {
@@ -401,28 +439,44 @@ export default function BarcodeBilling() {
           return;
       }
       
+      const priceNum = parseInt(newProductPrice) || 0;
+      const newProd: ProductItem = {
+          id: Date.now(),
+          name: newProductName.trim(),
+          barcode: newBarcode.trim(),
+          sold: "0 sold",
+          value: `₹${priceNum}`,
+          width: "30%",
+          color: "bg-indigo-500",
+          price: priceNum
+      };
+
+      // 1. Save locally so it's instantly available offline
+      const localProducts = getStoreProducts(shopkeeper?.email);
+      saveStoreProducts([newProd, ...localProducts], shopkeeper?.email);
+
+      // 2. Attempt backend sync in background
       try {
           await axios.post(apiUrl("/api/products/"), {
-              name: newProductName,
-              barcode: newBarcode,
+              name: newProductName.trim(),
+              barcode: newBarcode.trim(),
               sold: "0 sold",
-              value: `₹${newProductPrice}`,
-              width: "0%",
-              color: "bg-slate-500",
+              value: `₹${priceNum}`,
+              width: "30%",
+              color: "bg-indigo-500",
               shopkeeper_email: shopkeeper?.email
-          });
-          
-          setItems(prev => [...prev, { product: newProductName, quantity: 1, unit_price: parseInt(newProductPrice) }]);
-          toast.success("Product saved and added to bill!");
-          
-          setShowNewProductModal(false);
-          setNewProductName("");
-          setNewProductPrice("");
-          if (autoResumeCamera) setScanning(true);
+          }, { timeout: 2500 });
       } catch (err) {
-          console.error(err);
-          toast.error("Failed to save product.");
+          console.warn("Backend product save deferred:", err);
       }
+      
+      setItems(prev => [...prev, { product: newProductName.trim(), quantity: 1, unit_price: priceNum }]);
+      toast.success("Product saved and added to bill!");
+      
+      setShowNewProductModal(false);
+      setNewProductName("");
+      setNewProductPrice("");
+      if (autoResumeCamera) setScanning(true);
   };
 
   const handleClear = () => {
@@ -447,10 +501,11 @@ export default function BarcodeBilling() {
           return;
       }
       axios.get(apiUrl("/api/customers/"), {
-          params: { shopkeeper_email: shopkeeper?.email }
+          params: { shopkeeper_email: shopkeeper?.email },
+          timeout: 2500
       })
           .then(res => setCustomers(res.data))
-          .catch(err => console.error("Error fetching customers", err));
+          .catch(() => setCustomers(getStoreCustomers(shopkeeper?.email)));
       setShowWhatsAppModal(true);
   };
 
@@ -466,8 +521,16 @@ export default function BarcodeBilling() {
                       phone: newCustomerPhone,
                       initials: newCustomerName.substring(0, 2).toUpperCase(),
                       tone: "violet",
-                  });
-              } catch (e) { console.error("Could not save customer", e); }
+                      shopkeeper_email: shopkeeper?.email
+                  }, { timeout: 2500 });
+              } catch (e) {
+                  addStoreCustomer({
+                      name: newCustomerName,
+                      phone: newCustomerPhone,
+                      initials: newCustomerName.substring(0, 2).toUpperCase(),
+                      tone: "violet"
+                  }, shopkeeper?.email);
+              }
           }
       } else {
           toast.error("Please select a customer or enter a phone number.");
@@ -538,25 +601,30 @@ export default function BarcodeBilling() {
       payment_mode = "Cash",
       status = "Paid",
   }: any) => {
+      const billRecord = {
+          invoice: invoiceNumber,
+          customer: customerNameToSave,
+          amount: `₹${grandTotal}`,
+          time: "Just now",
+          status: status,
+          payment_mode: payment_mode,
+          initials: customerInitials,
+          tone: status === "Paid" ? "emerald" : "amber",
+          items: items,
+          shopkeeper_email: shopkeeper?.email
+      };
+
       try {
-          await axios.post(apiUrl("/api/bills/"), {
-              invoice: invoiceNumber,
-              customer: customerNameToSave,
-              amount: `₹${grandTotal}`,
-              time: "Just now",
-              status: status,
-              payment_mode: payment_mode,
-              initials: customerInitials,
-              tone: status === "Paid" ? "emerald" : "amber",
-              items: items,
-              shopkeeper_email: shopkeeper?.email
-          });
+          await axios.post(apiUrl("/api/bills/"), billRecord, { timeout: 3000 });
           toast.success(`Sale recorded via ${payment_mode}! Bill generated.`);
           setBillCustomerName("");
           handleClear();
       } catch (err) {
-          console.error("Failed to complete sale", err);
-          toast.error("Failed to record the sale.");
+          console.warn("Backend offline, saving bill locally:", err);
+          addStoreBill(billRecord, shopkeeper?.email);
+          toast.success(`Sale recorded via ${payment_mode}! Bill generated.`);
+          setBillCustomerName("");
+          handleClear();
       }
   };
 

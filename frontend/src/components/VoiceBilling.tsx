@@ -7,6 +7,7 @@ import { useAuth } from "../App";
 import UpiPaymentModal from "./UpiPaymentModal";
 import PaymentModeModal, { type PaymentMode } from "./PaymentModeModal";
 import { apiUrl } from "../config/api";
+import { parseVoiceBillLocally, addStoreBill, getStoreCustomers, addStoreCustomer } from "../lib/offlineStore";
 
 export default function VoiceBilling() {
   const { shopkeeper } = useAuth();
@@ -49,20 +50,28 @@ export default function VoiceBilling() {
   }, []);
 
   const requestMicPermission = async () => {
+    // In Android Chrome, holding a getUserMedia stream locks the microphone hardware
+    // and causes Google Speech Recognition to fail with:
+    // "Speech Recognition and Synthesis from Google cannot record now as Chrome is recording."
+    // To prevent this conflict, we immediately close any test audio stream, allowing
+    // SpeechRecognition exclusive access to the microphone.
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-        setError("");
-        return true;
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(track => track.stop());
+        // Short pause to guarantee OS audio session release
+        await new Promise(r => setTimeout(r, 150));
       }
+      setError("");
+      return true;
     } catch (err: any) {
       console.warn("Microphone permission check:", err);
       if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
         setError("Microphone permission was denied. Please allow microphone in your browser URL settings.");
         return false;
       }
+      return true;
     }
-    return true;
   };
 
   const startRecording = async () => {
@@ -189,25 +198,52 @@ export default function VoiceBilling() {
     setProcessing(true);
     setError("");
 
+    // 1. Try backend NLP parser first (if server is reachable)
     try {
-      const response = await axios.post(apiUrl("/api/voice-billing/"), {
-        text: textToProcess,
-        shopkeeper_email: shopkeeper?.email
-      });
+      const response = await axios.post(
+        apiUrl("/api/voice-billing/"),
+        {
+          text: textToProcess,
+          shopkeeper_email: shopkeeper?.email,
+        },
+        { timeout: 2500 }
+      );
 
       if (response.data && response.data.success) {
         setBillingData(response.data);
-        setItems(response.data.items.map((i: any) => ({
-          ...i,
-          quantity: i.quantity || 1,
-          unit_price: i.unit_price || 0
-        })));
+        setItems(
+          response.data.items.map((i: any) => ({
+            ...i,
+            quantity: i.quantity || 1,
+            unit_price: i.unit_price || 0,
+          }))
+        );
         toast.success("Bill processed successfully!");
-      } else {
-        setError(response.data?.error || "Failed to process the bill.");
+        setProcessing(false);
+        return;
       }
     } catch (err: any) {
-      console.error(err);
+      console.warn("Backend voice billing unreachable, using offline voice parser:", err);
+    }
+
+    // 2. Offline Smart Voice Parser fallback (works 100% offline & on mobile)
+    try {
+      const localResult = parseVoiceBillLocally(textToProcess, shopkeeper?.email);
+      if (localResult && localResult.items.length > 0) {
+        setBillingData(localResult);
+        setItems(
+          localResult.items.map((i: any) => ({
+            ...i,
+            quantity: i.quantity || 1,
+            unit_price: i.unit_price || 0,
+          }))
+        );
+        toast.success("Voice recognized and matched with store catalog!");
+      } else {
+        setError("Could not identify the product and price. Please speak or type again.");
+      }
+    } catch (localErr) {
+      console.error("Local parsing error:", localErr);
       setError("Could not identify the product and price. Please speak or type again.");
     } finally {
       setProcessing(false);
@@ -240,9 +276,12 @@ export default function VoiceBilling() {
           return;
       }
       
-      axios.get(apiUrl("/api/customers/"))
+      axios.get(apiUrl("/api/customers/"), {
+          params: { shopkeeper_email: shopkeeper?.email },
+          timeout: 2500,
+      })
           .then(res => setCustomers(res.data))
-          .catch(err => console.error("Error fetching customers", err));
+          .catch(() => setCustomers(getStoreCustomers(shopkeeper?.email)));
           
       setShowWhatsAppModal(true);
   };
@@ -260,8 +299,16 @@ export default function VoiceBilling() {
                       phone: newCustomerPhone,
                       initials: newCustomerName.substring(0, 2).toUpperCase(),
                       tone: "violet",
-                  });
-              } catch (e) { console.error("Could not save customer", e); }
+                      shopkeeper_email: shopkeeper?.email,
+                  }, { timeout: 2500 });
+              } catch (e) {
+                  addStoreCustomer({
+                      name: newCustomerName,
+                      phone: newCustomerPhone,
+                      initials: newCustomerName.substring(0, 2).toUpperCase(),
+                      tone: "violet",
+                  }, shopkeeper?.email);
+              }
           }
       } else {
           toast.error("Please select a customer or enter a phone number.");
@@ -334,24 +381,28 @@ export default function VoiceBilling() {
       payment_mode = "Cash",
       status = "Paid",
   }: any) => {
+      const billRecord = {
+          invoice: invoiceNumber,
+          customer: customerNameToSave,
+          amount: `₹${grandTotal}`,
+          time: "Just now",
+          status: status,
+          payment_mode: payment_mode,
+          initials: customerInitials,
+          tone: status === "Paid" ? "emerald" : "amber",
+          items: items,
+          shopkeeper_email: shopkeeper?.email,
+      };
+
       try {
-          await axios.post(apiUrl("/api/bills/"), {
-              invoice: invoiceNumber,
-              customer: customerNameToSave,
-              amount: `₹${grandTotal}`,
-              time: "Just now",
-              status: status,
-              payment_mode: payment_mode,
-              initials: customerInitials,
-              tone: status === "Paid" ? "emerald" : "amber",
-              items: items,
-              shopkeeper_email: shopkeeper?.email,
-          });
+          await axios.post(apiUrl("/api/bills/"), billRecord, { timeout: 3000 });
           toast.success(`Sale recorded via ${payment_mode}! Bill generated.`);
           handleClear();
       } catch (err) {
-          console.error("Failed to complete sale", err);
-          toast.error("Failed to record the sale.");
+          console.warn("Backend offline, saving bill locally:", err);
+          addStoreBill(billRecord, shopkeeper?.email);
+          toast.success(`Sale recorded via ${payment_mode}! Bill generated.`);
+          handleClear();
       }
   };
 

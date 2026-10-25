@@ -22,6 +22,12 @@ import { useAuth } from "../App";
 import UpiPaymentModal from "./UpiPaymentModal";
 import PaymentModeModal, { type PaymentMode } from "./PaymentModeModal";
 import { apiUrl } from "../config/api";
+import {
+  getStoreProducts,
+  getStoreCustomers,
+  addStoreCustomer,
+  addStoreBill,
+} from "../lib/offlineStore";
 
 interface BillItem {
   product: string;
@@ -163,12 +169,18 @@ export default function ImageBilling() {
   // Load catalog products for manual search
   useEffect(() => {
     if (shopkeeper?.email) {
+      setCatalogProducts(getStoreProducts(shopkeeper.email));
       axios
         .get(apiUrl("/api/products/"), {
           headers: { "X-Shopkeeper-Email": shopkeeper.email },
+          timeout: 2500,
         })
-        .then((res) => setCatalogProducts(res.data))
-        .catch(() => {});
+        .then((res) => {
+          if (res.data && res.data.length > 0) setCatalogProducts(res.data);
+        })
+        .catch(() => {
+          setCatalogProducts(getStoreProducts(shopkeeper.email));
+        });
     }
   }, [shopkeeper]);
 
@@ -360,9 +372,10 @@ export default function ImageBilling() {
     axios
       .get(apiUrl("/api/customers/"), {
         headers: { "X-Shopkeeper-Email": shopkeeper?.email || "" },
+        timeout: 2500,
       })
       .then((res) => setCustomers(res.data))
-      .catch(() => {});
+      .catch(() => setCustomers(getStoreCustomers(shopkeeper?.email)));
     setShowWhatsAppModal(true);
   };
 
@@ -380,8 +393,15 @@ export default function ImageBilling() {
             initials: newCustomerName.substring(0, 2).toUpperCase(),
             tone: "violet",
             shopkeeper_email: shopkeeper?.email,
-          });
-        } catch {}
+          }, { timeout: 2500 });
+        } catch {
+          addStoreCustomer({
+            name: newCustomerName,
+            phone: newCustomerPhone,
+            initials: newCustomerName.substring(0, 2).toUpperCase(),
+            tone: "violet",
+          }, shopkeeper?.email);
+        }
       }
     } else {
       toast.error("Please select a customer or enter a phone number.");
@@ -459,24 +479,30 @@ export default function ImageBilling() {
     payment_mode = "Cash",
     status = "Paid",
   }: any) => {
+    const billRecord = {
+      invoice: invoiceNumber,
+      customer: customerNameToSave,
+      amount: `₹${grandTotal}`,
+      time: "Just now",
+      status: status,
+      payment_mode: payment_mode,
+      initials: customerInitials,
+      tone: status === "Paid" ? "emerald" : "amber",
+      items: items,
+      shopkeeper_email: shopkeeper?.email,
+    };
+
     try {
-      await axios.post(apiUrl("/api/bills/"), {
-        invoice: invoiceNumber,
-        customer: customerNameToSave,
-        amount: `₹${grandTotal}`,
-        time: "Just now",
-        status: status,
-        payment_mode: payment_mode,
-        initials: customerInitials,
-        tone: status === "Paid" ? "emerald" : "amber",
-        items: items,
-        shopkeeper_email: shopkeeper?.email,
-      });
+      await axios.post(apiUrl("/api/bills/"), billRecord, { timeout: 3000 });
       toast.success(`Sale recorded via ${payment_mode}! Bill generated.`);
       setBillCustomerName("");
       handleClear();
     } catch {
-      toast.error("Failed to record the sale.");
+      console.warn("Backend offline, saving bill locally");
+      addStoreBill(billRecord, shopkeeper?.email);
+      toast.success(`Sale recorded via ${payment_mode}! Bill generated.`);
+      setBillCustomerName("");
+      handleClear();
     }
   };
 
