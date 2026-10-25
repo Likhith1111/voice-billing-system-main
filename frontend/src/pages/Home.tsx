@@ -119,10 +119,11 @@ function getGreeting(hour: number) {
 
 function ChartTooltip({ active, payload, label, currency = false }: { active?: boolean; payload?: Array<{ value: number }>; label?: string; currency?: boolean }) {
   if (!active || !payload?.length) return null;
+  const val = payload[0]?.value ?? 0;
   return (
     <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-xl shadow-slate-200/40">
       <p className="text-[11px] font-medium text-slate-500">{label}</p>
-      <p className="mt-0.5 text-sm font-bold text-slate-900">{currency ? `₹${payload[0].value.toLocaleString("en-IN")}` : `₹${payload[0].value.toLocaleString("en-IN")}`}</p>
+      <p className="mt-0.5 text-sm font-bold text-slate-900">₹{val.toLocaleString("en-IN")}</p>
     </div>
   );
 }
@@ -176,14 +177,20 @@ export default function Home() {
         const totalRev = localBills.reduce((sum: number, b: any) => sum + (parseFloat(b.total || b.amount || 0) || 0), 0);
 
         setSummaryStats({
-          todayRevenue: `₹${totalRev.toLocaleString('en-IN')}`,
-          revenueChange: "+0%",
-          billsCount: localBills.length.toString(),
-          billsChange: `${localBills.length} Total`,
-          activeCustomers: Math.min(localBills.length, 10).toString(),
-          customersChange: "Active",
-          activeVoiceRate: "99.4%",
-          activeVoiceStatus: "Ready"
+          todaySales: `₹${(totalRev || 0).toLocaleString('en-IN')}`,
+          todaySalesMeta: localBills.length > 0 ? "Updated just now" : "No sales today",
+          billsGenerated: localBills.length,
+          billsGeneratedMeta: `${localBills.length} invoices to date`,
+          totalCustomers: Math.min(localBills.length, 10),
+          totalCustomersMeta: `${Math.min(localBills.length, 10)} registered`,
+          totalProducts: localProds.length,
+          totalProductsMeta: `${localProds.length} in catalog`,
+          lowStock: 0,
+          lowStockMeta: "All in stock",
+          monthlyRevenue: `₹${(totalRev || 0).toLocaleString('en-IN')}`,
+          monthlyRevenueMeta: "Current month",
+          voiceBillsToday: localBills.length,
+          accuracy: "100%"
         });
         setSalesByHour([
           { hour: "9 AM", sales: 0 },
@@ -193,13 +200,13 @@ export default function Home() {
           { hour: "9 PM", sales: 0 }
         ]);
         setRevenueTrend([
-          { day: "Mon", revenue: 0 },
-          { day: "Tue", revenue: 0 },
-          { day: "Wed", revenue: 0 },
-          { day: "Thu", revenue: 0 },
-          { day: "Fri", revenue: 0 },
-          { day: "Sat", revenue: 0 },
-          { day: "Sun", revenue: 0 }
+          { day: "Mon", value: 0, revenue: 0 },
+          { day: "Tue", value: 0, revenue: 0 },
+          { day: "Wed", value: 0, revenue: 0 },
+          { day: "Thu", value: 0, revenue: 0 },
+          { day: "Fri", value: 0, revenue: 0 },
+          { day: "Sat", value: 0, revenue: 0 },
+          { day: "Sun", value: 0, revenue: 0 }
         ]);
         setRecentBills(localBills);
         setLowStock([]);
@@ -562,7 +569,7 @@ export default function Home() {
                     <div key={item.day} className={`flex items-center rounded-xl px-3 py-3 ${idx === 0 ? "bg-violet-50/70" : ""}`}>
                       <div className={`mr-3 h-2 w-2 rounded-full ${idx === 0 ? "bg-violet-500" : "bg-slate-200"}`} />
                       <span className="flex-1 text-xs font-semibold text-slate-600">{item.day}</span>
-                      <span className="mr-3 text-xs font-bold text-slate-900">₹{(item.value).toLocaleString("en-IN")}</span>
+                      <span className="mr-3 text-xs font-bold text-slate-900">₹{(item.value ?? item.revenue ?? 0).toLocaleString("en-IN")}</span>
                     </div>
                   ))
                 )}
