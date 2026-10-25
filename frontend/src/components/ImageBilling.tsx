@@ -13,6 +13,8 @@ import {
   X,
   PenLine,
   Search,
+  RefreshCw,
+  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import QRCode from "react-qr-code";
@@ -42,6 +44,13 @@ export default function ImageBilling() {
   const [error, setError] = useState("");
   const [showPreview, setShowPreview] = useState(false);
 
+  // Live in-app Camera State
+  const [isLiveCameraOpen, setIsLiveCameraOpen] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<"environment" | "user">("environment");
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
   // Manual-entry mode state
   const [manualMode, setManualMode] = useState(false);
   const [manualInput, setManualInput] = useState("");
@@ -65,6 +74,78 @@ export default function ImageBilling() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const manualInputRef = useRef<HTMLInputElement>(null);
+
+  // Stop camera on unmount
+  useEffect(() => {
+    return () => {
+      stopLiveCamera();
+    };
+  }, []);
+
+  const startLiveCamera = async (facing: "environment" | "user" = cameraFacing) => {
+    stopLiveCamera();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      setIsLiveCameraOpen(true);
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      }, 100);
+    } catch (err) {
+      console.warn("High-res camera stream error, trying fallback:", err);
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        streamRef.current = stream;
+        setIsLiveCameraOpen(true);
+        setTimeout(() => {
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        }, 100);
+      } catch (e) {
+        toast.error("Could not access camera. Opening native camera...");
+        cameraInputRef.current?.click();
+      }
+    }
+  };
+
+  const stopLiveCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setIsLiveCameraOpen(false);
+  };
+
+  const flipImageCamera = () => {
+    const nextFacing = cameraFacing === "environment" ? "user" : "environment";
+    setCameraFacing(nextFacing);
+    startLiveCamera(nextFacing);
+    toast.info(`Switched to ${nextFacing === "environment" ? "Back" : "Front"} camera`);
+  };
+
+  const capturePhotoFromLiveCamera = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+    setImage(dataUrl);
+    setItems([]);
+    setError("");
+    setManualMode(false);
+    stopLiveCamera();
+    toast.success("Photo captured!");
+  };
 
   // Persist image in session
   useEffect(() => {
@@ -426,28 +507,109 @@ export default function ImageBilling() {
         )}
 
         <div className="w-full max-w-2xl space-y-6">
-          {/* ── Upload Zone ── */}
+          {/* ── Camera & Upload Zone ── */}
           {!image ? (
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-indigo-200 bg-indigo-50/50 p-12 transition hover:border-indigo-300 hover:bg-indigo-50"
-            >
-              <ImageIcon className="mb-4 h-12 w-12 text-indigo-400" />
-              <h3 className="text-lg font-bold text-slate-700">
-                Upload or Take Photo
-              </h3>
-              <p className="text-sm text-slate-500">
-                Click to browse your device
-              </p>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                ref={fileInputRef}
-                onChange={handleImageUpload}
-              />
-            </div>
+            isLiveCameraOpen ? (
+              <div className="relative w-full overflow-hidden rounded-3xl border-4 border-indigo-200 bg-black shadow-2xl">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-80 sm:h-96 object-cover"
+                />
+
+                {/* Top overlay controls */}
+                <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
+                  <button
+                    type="button"
+                    onClick={flipImageCamera}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-black/60 text-white backdrop-blur-md text-xs font-bold hover:bg-black/80 transition active:scale-95 border border-white/20"
+                  >
+                    <RefreshCw className="h-4 w-4 text-indigo-400" />
+                    Flip Camera ({cameraFacing === "environment" ? "Back" : "Front"})
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={stopLiveCamera}
+                    className="p-2 rounded-xl bg-black/60 text-white backdrop-blur-md hover:bg-rose-600 transition"
+                    aria-label="Close camera"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* Bottom Snap Shutter button */}
+                <div className="absolute bottom-5 inset-x-0 flex flex-col items-center justify-center gap-2 z-10">
+                  <button
+                    type="button"
+                    onClick={capturePhotoFromLiveCamera}
+                    className="group relative flex h-16 w-16 items-center justify-center rounded-full border-4 border-white bg-indigo-600 shadow-2xl transition hover:scale-105 active:scale-95"
+                    aria-label="Capture Photo"
+                  >
+                    <div className="h-11 w-11 rounded-full bg-white transition group-hover:bg-indigo-100" />
+                  </button>
+                  <span className="text-xs font-bold text-white drop-shadow-md bg-black/50 px-3 py-1 rounded-full">
+                    Tap to Snap Photo
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4 w-full">
+                {/* 2 Camera buttons for Mobile & Desktop */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                  <button
+                    type="button"
+                    onClick={() => startLiveCamera(cameraFacing)}
+                    className="flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 px-6 py-4 text-base font-bold text-white shadow-lg shadow-indigo-500/25 transition hover:opacity-95 active:scale-98"
+                  >
+                    <Camera className="h-5 w-5" />
+                    Open Live Camera
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="flex items-center justify-center gap-2.5 rounded-2xl bg-violet-600 px-6 py-4 text-base font-bold text-white shadow-lg shadow-violet-500/25 transition hover:bg-violet-700 active:scale-98"
+                  >
+                    <Camera className="h-5 w-5" />
+                    Take Photo (Mobile)
+                  </button>
+                </div>
+
+                {/* Dropzone / Gallery picker */}
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-indigo-200 bg-indigo-50/50 p-8 transition hover:border-indigo-300 hover:bg-indigo-50"
+                >
+                  <ImageIcon className="mb-3 h-10 w-10 text-indigo-400" />
+                  <h3 className="text-base font-bold text-slate-700">
+                    Upload from Gallery / Files
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Click to browse your photos or documents
+                  </p>
+                </div>
+
+                {/* Hidden native inputs */}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  ref={cameraInputRef}
+                  onChange={handleImageUpload}
+                />
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={handleImageUpload}
+                />
+              </div>
+            )
           ) : (
             <div className="flex flex-col items-center space-y-4">
               {/* Image preview */}

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { Html5Qrcode } from "html5-qrcode";
 import { BrowserMultiFormatReader, DecodeHintType, BarcodeFormat } from "@zxing/library";
-import { ScanLine, Trash2, Send, CheckCircle2, AlertCircle, Upload, Image as ImageIcon, Crop as CropIcon } from "lucide-react";
+import { ScanLine, Trash2, Send, CheckCircle2, AlertCircle, Upload, Image as ImageIcon, Crop as CropIcon, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import QRCode from "react-qr-code";
 import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
@@ -21,6 +21,7 @@ export default function BarcodeBilling() {
   const [error, setError] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const [autoResumeCamera, setAutoResumeCamera] = useState(false);
   
   // Cropping State
@@ -64,6 +65,11 @@ export default function BarcodeBilling() {
       sessionStorage.setItem('barcodeBilling_items', JSON.stringify(items));
   }, [items]);
 
+  const handleFlipCamera = () => {
+      setFacingMode(prev => (prev === "environment" ? "user" : "environment"));
+      toast.info(`Switched to ${facingMode === "environment" ? "Front" : "Back"} camera`);
+  };
+
   useEffect(() => {
       let html5QrCode: Html5Qrcode | null = null;
       
@@ -71,22 +77,22 @@ export default function BarcodeBilling() {
           html5QrCode = new Html5Qrcode("reader");
           
           html5QrCode.start(
-              { facingMode: "user" }, // "user" forces front camera/webcam
+              { facingMode: facingMode },
               {
                   fps: 10,
-                  // Removed qrbox to allow scanning the entire frame, much easier for laptops
               },
               onScanSuccess,
               onScanFailure
           ).catch(err => {
-              console.error("Front camera failed, trying environment", err);
+              console.warn(`Camera start failed with ${facingMode}, trying alternate`, err);
+              const fallbackMode = facingMode === "environment" ? "user" : "environment";
               html5QrCode?.start(
-                  { facingMode: "environment" },
+                  { facingMode: fallbackMode },
                   { fps: 10 },
                   onScanSuccess,
                   onScanFailure
               ).catch(e => {
-                  toast.error("Could not start camera.");
+                  toast.error("Could not start camera. Check camera permissions.");
                   setScanning(false);
               });
           });
@@ -97,7 +103,7 @@ export default function BarcodeBilling() {
               html5QrCode.stop().then(() => html5QrCode.clear()).catch(console.error);
           }
       };
-  }, [scanning]);
+  }, [scanning, facingMode]);
 
   const playBeep = () => {
       const context = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -576,27 +582,50 @@ export default function BarcodeBilling() {
 
             <div className="w-full max-w-2xl flex flex-col items-center">
                 {!scanning ? (
-                    <div className="flex flex-col sm:flex-row items-center gap-4 w-full justify-center">
-                        <button 
-                            onClick={() => setScanning(true)}
-                            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-8 py-4 text-lg font-bold text-white shadow-lg shadow-indigo-500/25 transition hover:opacity-90 w-full sm:w-auto"
-                        >
-                            <ScanLine className="h-6 w-6" /> Start Camera
-                        </button>
-                        
-                        <label className="flex items-center justify-center gap-2 rounded-xl bg-white border-2 border-indigo-100 px-8 py-4 text-lg font-bold text-indigo-600 shadow-lg shadow-indigo-100/25 transition hover:bg-indigo-50 cursor-pointer w-full sm:w-auto">
-                            <ImageIcon className="h-6 w-6" /> Upload Image
-                            <input 
-                                type="file" 
-                                accept="image/*" 
-                                className="hidden" 
-                                onChange={handleImageUpload} 
-                            />
-                        </label>
+                    <div className="flex flex-col items-center gap-3 w-full">
+                        <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                            <span>Camera:</span>
+                            <button
+                                type="button"
+                                onClick={() => setFacingMode(prev => prev === "environment" ? "user" : "environment")}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 text-xs font-bold transition"
+                            >
+                                <RefreshCw className="h-3.5 w-3.5" /> {facingMode === "environment" ? "Back Camera (Default)" : "Front Camera"}
+                            </button>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row items-center gap-4 w-full justify-center">
+                            <button 
+                                onClick={() => setScanning(true)}
+                                className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-8 py-4 text-lg font-bold text-white shadow-lg shadow-indigo-500/25 transition hover:opacity-90 w-full sm:w-auto"
+                            >
+                                <ScanLine className="h-6 w-6" /> Start Camera
+                            </button>
+                            
+                            <label className="flex items-center justify-center gap-2 rounded-xl bg-white border-2 border-indigo-100 px-8 py-4 text-lg font-bold text-indigo-600 shadow-lg shadow-indigo-100/25 transition hover:bg-indigo-50 cursor-pointer w-full sm:w-auto">
+                                <ImageIcon className="h-6 w-6" /> Upload Image
+                                <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    className="hidden" 
+                                    onChange={handleImageUpload} 
+                                />
+                            </label>
+                        </div>
                     </div>
                 ) : (
                     <div className="w-full max-w-md space-y-4">
                         <div id="reader" className="w-full overflow-hidden rounded-2xl border-4 border-slate-100 shadow-lg bg-black"></div>
+                        
+                        {/* Flip Camera Button */}
+                        <button
+                            type="button"
+                            onClick={handleFlipCamera}
+                            className="w-full flex items-center justify-center gap-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 border-2 border-indigo-200 py-3 text-sm font-bold text-indigo-700 shadow-sm transition active:scale-95"
+                        >
+                            <RefreshCw className="h-4 w-4" /> Flip Camera ({facingMode === "environment" ? "Switch to Front" : "Switch to Back"})
+                        </button>
+
                         <div className="flex flex-col sm:flex-row gap-3">
                             <button 
                                 onClick={() => setScanning(false)}
