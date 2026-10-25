@@ -320,9 +320,28 @@ export default function Home() {
       {mobileNavOpen && <button className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-sm lg:hidden" onClick={() => setMobileNavOpen(false)} aria-label="Close navigation overlay" />}
 
       <div className="lg:pl-[264px] pb-24 lg:pb-12">
-        <header className="sticky top-0 z-30 flex h-[76px] items-center gap-4 border-b border-slate-200/80 bg-white/85 px-4 backdrop-blur-xl sm:px-6 lg:px-10">
-          <button onClick={() => setMobileNavOpen(true)} className="rounded-xl border border-slate-200 p-2.5 text-slate-600 lg:hidden" aria-label="Open navigation"><Menu className="h-5 w-5" /></button>
-          <div className="relative max-w-[380px] flex-1">
+        <header className="sticky top-0 z-30 flex h-[68px] sm:h-[76px] items-center justify-between gap-3 border-b border-slate-200/80 bg-white/90 px-3.5 backdrop-blur-xl sm:px-6 lg:px-10 shadow-sm">
+          {/* Mobile Store Header */}
+          <div className="flex items-center gap-2.5 lg:hidden">
+            <button onClick={() => setMobileNavOpen(true)} className="rounded-xl border border-slate-200 p-2 text-slate-600 active:scale-95" aria-label="Open navigation">
+              <Menu className="h-5 w-5" />
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-white shadow-sm">
+                <Store className="h-4 w-4" />
+              </div>
+              <div className="leading-tight">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-display text-sm font-extrabold text-slate-900 truncate max-w-[130px] sm:max-w-none">{shopkeeper?.store_name || "shimadri kirana"}</span>
+                  <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                </div>
+                <p className="text-[10px] font-medium text-slate-400">POS Ready</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Search Bar */}
+          <div className="relative max-w-[380px] flex-1 hidden lg:block">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-[17px] w-[17px] -translate-y-1/2 text-slate-400" />
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search products, customers, invoices…" className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/80 pl-10 pr-12 text-[13px] outline-none transition placeholder:text-slate-400 focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100/70" />
             <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 sm:block">⌘ K</kbd>
@@ -401,16 +420,62 @@ export default function Home() {
           {activeNav === "Barcode Billing" && <BarcodeBilling />}
           {activeNav === "Dashboard" && (
             <>
-              <section className="mb-7 flex flex-col justify-between gap-5 md:flex-row md:items-end">
-            <div>
-              <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-600"><Store className="h-3.5 w-3.5" /> {shopkeeper?.store_name || 'Store'} <span className="text-slate-300">/</span> Overview</div>
-              <h1 className="font-display text-[28px] font-bold tracking-[-0.04em] text-slate-950 sm:text-[34px]">{getGreeting(now.getHours())}, {shopkeeper?.name ? shopkeeper.name.split(' ')[0] : 'Shopkeeper'} <span className="inline-block origin-bottom-right animate-[wave_1.8s_ease-in-out_infinite]">👋</span></h1>
-              <p className="mt-2 text-sm text-slate-500">Here’s what’s happening with your business today.</p>
-            </div>
-            <div className="flex items-center gap-3 self-start rounded-xl border border-slate-200/80 bg-white px-3.5 py-2.5 shadow-sm shadow-slate-200/40 md:self-auto"><div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50 text-violet-600"><Clock3 className="h-4 w-4" /></div><div><p className="text-[11px] font-semibold text-slate-800">{formatDate(now)}</p><p className="mt-0.5 text-[10px] text-slate-400">Last synced {formatTime(now)}</p></div></div>
-          </section>
+              {/* Mobile Hero Sales Card */}
+              <div className="block md:hidden mb-5">
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 via-indigo-600 to-purple-800 p-5 text-white shadow-xl shadow-indigo-600/25">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-white/70">Today's Sales</span>
+                    <span className="flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-[10px] font-bold backdrop-blur-md">
+                      <Clock3 className="h-3 w-3" /> {formatTime(now)}
+                    </span>
+                  </div>
+                  <div className="text-3xl font-black tracking-tight">{summaryStats?.todaySales || "₹0"}</div>
+                  
+                  <div className="mt-4 flex items-center justify-between border-t border-white/15 pt-3 text-xs">
+                    <div>
+                      <span className="text-white/60 text-[10px] block">INVOICES</span>
+                      <span className="font-bold">{summaryStats?.billsGenerated || 0} Bills</span>
+                    </div>
+                    <div>
+                      <span className="text-white/60 text-[10px] block">THIS MONTH</span>
+                      <span className="font-bold">{summaryStats?.monthlyRevenue || "₹0"}</span>
+                    </div>
+                    <div>
+                      <span className="text-white/60 text-[10px] block">CUSTOMERS</span>
+                      <span className="font-bold">{summaryStats?.totalCustomers || 0} Saved</span>
+                    </div>
+                  </div>
+                  
+                  {/* Quick Launch Buttons Inside Hero Card */}
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => handleNav("Voice Billing")}
+                      className="flex items-center justify-center gap-2 rounded-2xl bg-white py-3 text-xs font-bold text-violet-700 shadow-lg active:scale-95 transition"
+                    >
+                      <Mic2 className="h-4 w-4 text-violet-600" /> Voice Bill 🎤
+                    </button>
+                    <button
+                      onClick={() => handleNav("Barcode Billing")}
+                      className="flex items-center justify-center gap-2 rounded-2xl bg-white/20 hover:bg-white/30 backdrop-blur-md py-3 text-xs font-bold text-white border border-white/20 active:scale-95 transition"
+                    >
+                      <ScanLine className="h-4 w-4" /> Barcode Scan
+                    </button>
+                  </div>
+                </div>
+              </div>
 
-          <section className="mb-7 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+              {/* Desktop Greeting Section */}
+              <section className="mb-7 hidden md:flex flex-col justify-between gap-5 md:flex-row md:items-end">
+                <div>
+                  <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-600"><Store className="h-3.5 w-3.5" /> {shopkeeper?.store_name || 'Store'} <span className="text-slate-300">/</span> Overview</div>
+                  <h1 className="font-display text-[28px] font-bold tracking-[-0.04em] text-slate-950 sm:text-[34px]">{getGreeting(now.getHours())}, {shopkeeper?.name ? shopkeeper.name.split(' ')[0] : 'Shopkeeper'} <span className="inline-block origin-bottom-right animate-[wave_1.8s_ease-in-out_infinite]">👋</span></h1>
+                  <p className="mt-2 text-sm text-slate-500">Here’s what’s happening with your business today.</p>
+                </div>
+                <div className="flex items-center gap-3 self-start rounded-xl border border-slate-200/80 bg-white px-3.5 py-2.5 shadow-sm shadow-slate-200/40 md:self-auto"><div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50 text-violet-600"><Clock3 className="h-4 w-4" /></div><div><p className="text-[11px] font-semibold text-slate-800">{formatDate(now)}</p><p className="mt-0.5 text-[10px] text-slate-400">Last synced {formatTime(now)}</p></div></div>
+              </section>
+
+              {/* Desktop Summary Cards Grid */}
+              <section className="mb-7 hidden md:grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
             {summaryCards.map(({ label, icon: Icon, tone, trend }, index) => {
               const styles = toneStyles[tone];
               let dynamicValue = "₹0";
@@ -480,7 +545,41 @@ export default function Home() {
                   View all history <ChevronRight className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <div className="overflow-x-auto">
+              {/* Mobile Recent Transactions Card List */}
+              <div className="divide-y divide-slate-100 md:hidden">
+                {recentBills.length === 0 ? (
+                  <p className="py-8 text-center text-xs text-slate-400">
+                    No bills generated yet. Tap "Voice Bill" or "Barcode" to start!
+                  </p>
+                ) : (
+                  recentBills.slice(0, 5).map((bill) => (
+                    <div 
+                      key={bill.invoice} 
+                      onClick={() => handleNav("Bills")} 
+                      className="flex items-center justify-between p-3.5 active:bg-slate-50 transition"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold ${avatarStyles[bill.tone] || 'bg-slate-100 text-slate-700'}`}>
+                          {bill.initials}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-800">{bill.customer}</p>
+                          <p className="text-[10px] text-slate-400">{bill.invoice} • {bill.time}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-black text-slate-900">{bill.amount}</p>
+                        <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold ${bill.status === "Paid" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                          {bill.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Desktop Recent Bills Table */}
+              <div className="overflow-x-auto hidden md:block">
                 <table className="w-full min-w-[620px] text-left">
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50/60 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">

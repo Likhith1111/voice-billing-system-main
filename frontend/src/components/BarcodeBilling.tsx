@@ -655,15 +655,15 @@ export default function BarcodeBilling() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-        <div className="flex flex-col items-center rounded-3xl border border-indigo-100 bg-white p-10 shadow-xl shadow-indigo-100/40">
-            <div className="mb-6 flex flex-col items-center text-center">
-                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-500 text-white shadow-lg shadow-indigo-500/30">
-                    <ScanLine className="h-8 w-8" />
+    <div className="mx-auto max-w-5xl space-y-5">
+        <div className="flex flex-col items-center rounded-2xl sm:rounded-3xl border border-indigo-100 bg-white p-4 sm:p-8 shadow-xl shadow-indigo-100/40">
+            <div className="mb-5 flex flex-col items-center text-center">
+                <div className="mb-3 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-500 text-white shadow-lg shadow-indigo-500/30">
+                    <ScanLine className="h-7 w-7 sm:h-8 sm:w-8" />
                 </div>
-                <h2 className="font-display text-3xl font-bold tracking-tight text-slate-900">Barcode Scanner</h2>
-                <p className="mt-2 text-sm text-slate-500 max-w-md">
-                    Scan a product's barcode to instantly add it to the bill.
+                <h2 className="font-display text-2xl sm:text-3xl font-black tracking-tight text-slate-900">Barcode Scanner</h2>
+                <p className="mt-1 text-xs sm:text-sm text-slate-500 max-w-md">
+                    Scan products to instantly build your customer's invoice.
                 </p>
             </div>
 

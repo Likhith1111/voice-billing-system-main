@@ -509,19 +509,18 @@ export default function ImageBilling() {
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-5">
       {/* ── Header Card ── */}
-      <div className="flex flex-col items-center rounded-3xl border border-indigo-100 bg-white p-10 shadow-xl shadow-indigo-100/40">
-        <div className="mb-6 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-500 text-white shadow-lg shadow-indigo-500/30">
-            <Camera className="h-8 w-8" />
+      <div className="flex flex-col items-center rounded-2xl sm:rounded-3xl border border-indigo-100 bg-white p-4 sm:p-8 shadow-xl shadow-indigo-100/40">
+        <div className="mb-5 flex flex-col items-center text-center">
+          <div className="mb-3 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-500 text-white shadow-lg shadow-indigo-500/30">
+            <Camera className="h-7 w-7 sm:h-8 sm:w-8" />
           </div>
-          <h2 className="font-display text-3xl font-bold tracking-tight text-slate-900">
-            Image Billing
+          <h2 className="font-display text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
+            Photo Billing
           </h2>
-          <p className="mt-2 max-w-md text-sm text-slate-500">
-            Upload a photo of groceries — AI will identify the products, or type
-            them manually!
+          <p className="mt-1 max-w-md text-xs sm:text-sm text-slate-500">
+            Take a photo of groceries or receipts to generate bills instantly.
           </p>
         </div>
 

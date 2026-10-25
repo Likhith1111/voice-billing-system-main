@@ -407,49 +407,49 @@ export default function VoiceBilling() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-        <div className="flex flex-col items-center rounded-3xl border border-violet-100 bg-white p-10 shadow-xl shadow-violet-100/40">
+    <div className="mx-auto max-w-5xl space-y-5">
+        <div className="flex flex-col items-center rounded-2xl sm:rounded-3xl border border-violet-100 bg-white p-4 sm:p-8 shadow-xl shadow-violet-100/40">
             
             <div className="mb-4 flex flex-col items-center text-center">
-                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/30">
-                    <Sparkles className="h-8 w-8" />
+                <div className="mb-3 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/30">
+                    <Sparkles className="h-7 w-7 sm:h-8 sm:w-8" />
                 </div>
-                <h2 className="font-display text-3xl font-bold tracking-tight text-slate-900">SmartQ-Bill</h2>
-                <p className="mt-2 text-sm text-slate-500 max-w-md">
-                    AI-Driven Voice Billing with Quantum. Speak your bill naturally, or test with quick samples.
+                <h2 className="font-display text-2xl sm:text-3xl font-black tracking-tight text-slate-900">Voice Billing</h2>
+                <p className="mt-1 text-xs sm:text-sm text-slate-500 max-w-md">
+                    Speak items naturally (e.g. "2 milk, 1 bread") to automatically build the bill.
                 </p>
 
                 {/* Language Switcher */}
-                <div className="mt-4 flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-semibold">
+                <div className="mt-3.5 flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 p-1 text-[11px] font-semibold">
                     <button
                         type="button"
                         onClick={() => setLang("en-IN")}
-                        className={`rounded-full px-3 py-1 transition ${lang === "en-IN" ? "bg-violet-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
+                        className={`rounded-full px-2.5 py-1 transition ${lang === "en-IN" ? "bg-violet-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
                     >
-                        🇮🇳 English (India)
+                        🇮🇳 English
                     </button>
                     <button
                         type="button"
                         onClick={() => setLang("hi-IN")}
-                        className={`rounded-full px-3 py-1 transition ${lang === "hi-IN" ? "bg-violet-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
+                        className={`rounded-full px-2.5 py-1 transition ${lang === "hi-IN" ? "bg-violet-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
                     >
-                        🇮🇳 हिन्दी (Hindi)
+                        🇮🇳 हिन्दी
                     </button>
                     <button
                         type="button"
                         onClick={() => setLang("en-US")}
-                        className={`rounded-full px-3 py-1 transition ${lang === "en-US" ? "bg-violet-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
+                        className={`rounded-full px-2.5 py-1 transition ${lang === "en-US" ? "bg-violet-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
                     >
-                        🇺🇸 English (US)
+                        🇺🇸 US
                     </button>
                 </div>
             </div>
 
-            <div className="relative mb-6 flex flex-col items-center">
+            <div className="relative mb-5 flex flex-col items-center">
                 {isRecording ? (
                     <button 
                         onClick={stopRecording}
-                        className="group relative flex h-24 w-24 items-center justify-center rounded-full bg-rose-500 text-white shadow-xl shadow-rose-500/40 transition hover:bg-rose-600 hover:scale-105 active:scale-95"
+                        className="group relative flex h-24 w-24 items-center justify-center rounded-full bg-rose-500 text-white shadow-2xl shadow-rose-500/50 transition hover:bg-rose-600 hover:scale-105 active:scale-95"
                         title="Click to Stop Recording & Process Bill"
                     >
                         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75"></span>
@@ -459,24 +459,35 @@ export default function VoiceBilling() {
                     <button 
                         onClick={startRecording}
                         disabled={processing}
-                        className="group flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-xl shadow-indigo-500/40 transition hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
+                        className="group flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 via-indigo-600 to-purple-700 text-white shadow-2xl shadow-indigo-500/50 transition hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
                         title="Click to Start Speaking"
                     >
                         {processing ? <Loader2 className="h-8 w-8 animate-spin" /> : <Mic2 className="h-10 w-10 transition group-hover:scale-110" />}
                     </button>
                 )}
+
+                {/* Animated Waveform when listening */}
+                {isRecording && (
+                    <div className="flex items-center gap-1 mt-3 h-5">
+                        <span className="w-1.5 h-3 bg-violet-600 rounded-full animate-pulse [animation-delay:-0.3s]" />
+                        <span className="w-1.5 h-5 bg-violet-500 rounded-full animate-pulse [animation-delay:-0.15s]" />
+                        <span className="w-1.5 h-4 bg-fuchsia-500 rounded-full animate-pulse" />
+                        <span className="w-1.5 h-6 bg-indigo-500 rounded-full animate-pulse [animation-delay:-0.2s]" />
+                        <span className="w-1.5 h-3 bg-violet-400 rounded-full animate-pulse [animation-delay:-0.4s]" />
+                    </div>
+                )}
                 
-                <p className="mt-4 text-sm font-semibold text-slate-600">
+                <p className="mt-3 text-xs sm:text-sm font-semibold text-slate-600 text-center">
                     {isRecording ? (
-                        <span className="flex items-center gap-2 text-rose-500 animate-pulse">
-                            <span className="h-2 w-2 rounded-full bg-rose-500"></span> Listening... Click button when done speaking
+                        <span className="flex items-center gap-2 text-rose-500 font-bold">
+                            <span className="h-2 w-2 rounded-full bg-rose-500 animate-ping"></span> Listening... Tap red button when done speaking
                         </span>
                     ) : processing ? (
                         <span className="text-violet-600 flex items-center gap-2 font-medium">
-                            <Loader2 className="h-4 w-4 animate-spin" /> Extracting products &amp; calculating bill...
+                            <Loader2 className="h-4 w-4 animate-spin" /> Identifying products &amp; matching catalog...
                         </span>
                     ) : (
-                        "Tap microphone to speak, or use quick samples below"
+                        "Tap the microphone and speak products"
                     )}
                 </p>
 
