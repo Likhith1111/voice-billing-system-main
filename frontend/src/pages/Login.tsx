@@ -5,6 +5,7 @@ import { useAuth } from "../App";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 import { apiUrl } from "../config/api";
+import { loginShopkeeperOffline } from "../lib/offlineStore";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -24,14 +25,28 @@ export default function Login() {
       const response = await axios.post(apiUrl("/api/login/"), {
         email: cleanEmail,
         password: cleanPassword,
-      });
+      }, { timeout: 3500 });
       if (response.data.success) {
         login(response.data.shopkeeper);
         toast.success(`Welcome back, ${response.data.shopkeeper.name}!`);
         setLocation("/"); // Redirect to dashboard
+        return;
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.error || "Invalid email or password");
+      if (error.response?.data?.error) {
+        toast.error(error.response.data.error);
+        return;
+      }
+      // If network unreachable / mobile offline mode, authenticate against offline store
+      const res = loginShopkeeperOffline(cleanEmail, cleanPassword);
+      if (res.success && res.shopkeeper) {
+        login(res.shopkeeper);
+        toast.success(`Welcome back, ${res.shopkeeper.name}!`);
+        setLocation("/");
+        return;
+      } else {
+        toast.error(res.error || "Invalid email or password");
+      }
     } finally {
       setLoading(false);
     }

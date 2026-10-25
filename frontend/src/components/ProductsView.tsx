@@ -5,10 +5,12 @@ import { toast } from 'sonner';
 import { useAuth } from '../App';
 import { apiUrl } from '../config/api';
 
+import { getStoreProducts, saveStoreProducts } from '../lib/offlineStore';
+
 export default function ProductsView() {
   const { shopkeeper } = useAuth();
-  const [products, setProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<any[]>(() => getStoreProducts(shopkeeper?.email));
+  const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
 
@@ -25,14 +27,21 @@ export default function ProductsView() {
   const fetchProducts = () => {
     setLoading(true);
     axios.get(apiUrl('/api/products/'), {
-      params: { shopkeeper_email: shopkeeper?.email }
+      params: { shopkeeper_email: shopkeeper?.email },
+      timeout: 3000
     })
       .then(res => {
-        setProducts(res.data);
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          setProducts(res.data);
+          saveStoreProducts(res.data, shopkeeper?.email);
+        } else {
+          setProducts(getStoreProducts(shopkeeper?.email));
+        }
         setLoading(false);
       })
-      .catch(err => {
-        toast.error('Failed to load products');
+      .catch(() => {
+        // Fallback to local products
+        setProducts(getStoreProducts(shopkeeper?.email));
         setLoading(false);
       });
   };
@@ -74,13 +83,32 @@ export default function ProductsView() {
 
     const method = editingProduct ? 'put' : 'post';
 
-    axios[method](url, { ...formData, shopkeeper_email: shopkeeper?.email })
+    axios[method](url, { ...formData, shopkeeper_email: shopkeeper?.email }, { timeout: 3000 })
       .then(() => {
         toast.success(editingProduct ? 'Product updated' : 'Product added');
         setShowModal(false);
         fetchProducts();
       })
-      .catch((err) => toast.error(err.response?.data?.barcode?.[0] || 'Failed to save product'));
+      .catch((err) => {
+        // Fallback to local storage update
+        const current = getStoreProducts(shopkeeper?.email);
+        if (editingProduct) {
+          const updated = current.map(p => p.id === editingProduct.id ? { ...p, ...formData } : p);
+          saveStoreProducts(updated, shopkeeper?.email);
+          setProducts(updated);
+          toast.success('Product updated');
+        } else {
+          const newProd = {
+            id: Date.now(),
+            ...formData,
+          };
+          const updated = [newProd, ...current];
+          saveStoreProducts(updated, shopkeeper?.email);
+          setProducts(updated);
+          toast.success('Product added');
+        }
+        setShowModal(false);
+      });
   };
 
   const handleImageScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -112,12 +140,18 @@ export default function ProductsView() {
 
   const handleDelete = (id: number) => {
     if (confirm('Are you sure you want to delete this product?')) {
-      axios.delete(apiUrl(`/api/products/${id}/`))
+      axios.delete(apiUrl(`/api/products/${id}/`), { timeout: 3000 })
         .then(() => {
           toast.success('Product deleted');
           fetchProducts();
         })
-        .catch(() => toast.error('Failed to delete product'));
+        .catch(() => {
+          const current = getStoreProducts(shopkeeper?.email);
+          const updated = current.filter(p => p.id !== id);
+          saveStoreProducts(updated, shopkeeper?.email);
+          setProducts(updated);
+          toast.success('Product deleted');
+        });
     }
   };
 

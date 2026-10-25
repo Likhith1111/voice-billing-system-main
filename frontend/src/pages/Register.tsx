@@ -4,6 +4,8 @@ import axios from "axios";
 import { toast } from "sonner";
 import { apiUrl } from "../config/api";
 
+import { registerShopkeeperOffline } from "../lib/offlineStore";
+
 export default function Register() {
   const [, setLocation] = useLocation();
   const [name, setName] = useState("");
@@ -21,16 +23,27 @@ export default function Register() {
         email,
         password,
         store_name: storeName,
-      });
+      }, { timeout: 3500 });
       if (response.data.success) {
+        registerShopkeeperOffline({ name, email, password, store_name: storeName });
         toast.success("Registration successful! You can now log in.");
         setLocation("/login");
+        return;
       }
     } catch (error: any) {
       if (error.response?.data?.error) {
-         toast.error(error.response.data.error);
+        toast.error(error.response.data.error);
+        return;
+      }
+      // If backend server is unreachable (cloud/mobile offline mode), register locally
+      const res = registerShopkeeperOffline({ name, email, password, store_name: storeName });
+      if (res.success) {
+        toast.success("Store created successfully! You can now log in.");
+        setLocation("/login");
+        return;
       } else {
-         toast.error("An error occurred during registration");
+        toast.error(res.error || "An error occurred during registration");
+        return;
       }
     } finally {
       setLoading(false);

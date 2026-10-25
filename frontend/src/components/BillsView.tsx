@@ -14,10 +14,12 @@ const avatarStyles: Record<string, string> = {
   rose: "bg-rose-100 text-rose-700",
 };
 
+import { getStoreBills, addStoreBill } from '../lib/offlineStore';
+
 export default function BillsView() {
   const { shopkeeper } = useAuth();
-  const [bills, setBills] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [bills, setBills] = useState<any[]>(() => getStoreBills(shopkeeper?.email));
+  const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Paid' | 'Pending'>('All');
@@ -38,15 +40,19 @@ export default function BillsView() {
   const fetchBills = () => {
     setLoading(true);
     axios.get(apiUrl('/api/bills/'), {
-      params: { shopkeeper_email: shopkeeper?.email }
+      params: { shopkeeper_email: shopkeeper?.email },
+      timeout: 3000
     })
       .then(res => {
-        setBills(res.data);
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          setBills(res.data);
+        } else {
+          setBills(getStoreBills(shopkeeper?.email));
+        }
         setLoading(false);
       })
       .catch(err => {
-        console.error('Failed to load bills', err);
-        toast.error('Failed to load bills');
+        setBills(getStoreBills(shopkeeper?.email));
         setLoading(false);
       });
   };
@@ -89,13 +95,18 @@ export default function BillsView() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    axios.post(apiUrl('/api/bills/'), { ...formData, shopkeeper_email: shopkeeper?.email })
+    axios.post(apiUrl('/api/bills/'), { ...formData, shopkeeper_email: shopkeeper?.email }, { timeout: 3000 })
       .then(() => {
         toast.success('Bill generated successfully');
         setShowModal(false);
         fetchBills();
       })
-      .catch(() => toast.error('Failed to generate bill'));
+      .catch(() => {
+        addStoreBill(formData, shopkeeper?.email);
+        toast.success('Bill generated successfully');
+        setShowModal(false);
+        setBills(getStoreBills(shopkeeper?.email));
+      });
   };
 
   const handleDownloadPdf = async (bill: any) => {
