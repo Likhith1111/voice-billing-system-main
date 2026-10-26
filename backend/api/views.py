@@ -174,10 +174,31 @@ class UpdateProfileView(APIView):
                 shopkeeper.store_name = str(request.data['storeName']).strip()
             if 'address' in request.data:
                 shopkeeper.address = str(request.data['address']).strip()
+            # Check password verification if UPI ID is being modified
+            if 'upi_id' in request.data:
+                new_upi = str(request.data['upi_id']).strip()
+                current_upi = str(shopkeeper.upi_id or '').strip()
+                if new_upi != current_upi:
+                    verify_password = str(
+                        request.data.get('verify_password') or 
+                        request.data.get('current_password') or ''
+                    ).strip()
+                    stored_password = str(shopkeeper.password or '').strip()
+                    if stored_password:
+                        if not verify_password:
+                            return Response({
+                                'success': False, 
+                                'error': 'Account password is required to change your UPI ID.'
+                            }, status=400)
+                        if stored_password != verify_password and stored_password.lower() != verify_password.lower():
+                            return Response({
+                                'success': False, 
+                                'error': 'Incorrect password. UPI ID was not changed.'
+                            }, status=400)
+                    shopkeeper.upi_id = new_upi
+
             if 'password' in request.data and request.data['password']:
                 shopkeeper.password = str(request.data['password']).strip()
-            if 'upi_id' in request.data:
-                shopkeeper.upi_id = str(request.data['upi_id']).strip()
             
             shopkeeper.save()
             return Response({

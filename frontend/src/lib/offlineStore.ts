@@ -465,13 +465,32 @@ export function updateShopkeeperProfileOffline(data: any): Shopkeeper {
 
   const updatedList = shopkeepers.map((s) => {
     if (s.email.toLowerCase() === email) {
+      let nextUpi = s.upi_id;
+      if (data.upi_id !== undefined) {
+        const newUpi = String(data.upi_id).trim();
+        const currentUpi = (s.upi_id || "").trim();
+        if (newUpi !== currentUpi) {
+          const verifyPwd = String(data.verify_password || data.current_password || "").trim();
+          const storedPwd = String(s.password || "").trim();
+          if (storedPwd) {
+            if (!verifyPwd) {
+              throw new Error("Account password is required to change your UPI ID.");
+            }
+            if (verifyPwd !== storedPwd && verifyPwd.toLowerCase() !== storedPwd.toLowerCase()) {
+              throw new Error("Incorrect password. UPI ID was not changed.");
+            }
+          }
+          nextUpi = newUpi;
+        }
+      }
+
       updatedShopkeeper = {
         ...s,
         name: data.name || (data as any).shopkeeper_name || s.name,
         store_name: data.store_name || (data as any).storeName || s.store_name,
         phone: data.phone || s.phone,
         address: data.address || s.address,
-        upi_id: data.upi_id || s.upi_id,
+        upi_id: nextUpi,
         ...(data.password ? { password: data.password } : {}),
       };
       return updatedShopkeeper;
@@ -481,6 +500,25 @@ export function updateShopkeeperProfileOffline(data: any): Shopkeeper {
 
   if (!updatedShopkeeper) {
     const builtin = BUILTIN_ACCOUNTS.find((s) => s.email.toLowerCase() === email);
+    let nextUpi = data.upi_id || builtin?.upi_id || `${email.split("@")[0]}@upi`;
+    if (builtin && data.upi_id !== undefined) {
+      const newUpi = String(data.upi_id).trim();
+      const currentUpi = (builtin.upi_id || "").trim();
+      if (newUpi !== currentUpi) {
+        const verifyPwd = String(data.verify_password || data.current_password || "").trim();
+        const storedPwd = String(builtin.password || "").trim();
+        if (storedPwd) {
+          if (!verifyPwd) {
+            throw new Error("Account password is required to change your UPI ID.");
+          }
+          if (verifyPwd !== storedPwd && verifyPwd.toLowerCase() !== storedPwd.toLowerCase()) {
+            throw new Error("Incorrect password. UPI ID was not changed.");
+          }
+        }
+        nextUpi = newUpi;
+      }
+    }
+
     updatedShopkeeper = {
       id: builtin?.id || Date.now(),
       name: data.name || builtin?.name || "Shopkeeper",
@@ -488,7 +526,7 @@ export function updateShopkeeperProfileOffline(data: any): Shopkeeper {
       store_name: data.store_name || (data as any).storeName || builtin?.store_name || "Smart Kirana",
       phone: data.phone || builtin?.phone || "9876543210",
       address: data.address || builtin?.address || "Main Market",
-      upi_id: data.upi_id || builtin?.upi_id || `${email.split("@")[0]}@upi`,
+      upi_id: nextUpi,
       ...(data.password ? { password: data.password } : {}),
     };
     updatedList.push(updatedShopkeeper);
@@ -496,6 +534,7 @@ export function updateShopkeeperProfileOffline(data: any): Shopkeeper {
 
   localStorage.setItem("quantum_shopkeepers", JSON.stringify(updatedList));
   localStorage.setItem("quantum_current_shopkeeper", JSON.stringify(updatedShopkeeper));
+  localStorage.setItem("shopkeeper", JSON.stringify(updatedShopkeeper));
   return updatedShopkeeper;
 }
 
