@@ -29,10 +29,32 @@ export interface BillData {
   items?: InvoiceItem[];
 }
 
+
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+function dashedLine(doc: jsPDF, x1: number, y: number, x2: number) {
+  doc.setLineDashPattern([1.2, 1.2], 0);
+  doc.setDrawColor(150, 150, 150);
+  doc.setLineWidth(0.2);
+  doc.line(x1, y, x2, y);
+  doc.setLineDashPattern([], 0);
+}
+
+function solidLine(doc: jsPDF, x1: number, y: number, x2: number, thick = 0.5) {
+  doc.setLineDashPattern([], 0);
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(thick);
+  doc.line(x1, y, x2, y);
+  doc.setLineWidth(0.2);
+}
+
+function fmtRs(val: number): string {
+  return `\u20b9${val.toFixed(2)}`;
+}
+
 /**
- * Generates an official, beautiful PDF blob for a bill.
- * Tries the backend API first, but seamlessly falls back to client-side jsPDF
- * so it works 100% offline, on mobile devices, or in cloud deployments.
+ * Generates a thermal-receipt style PDF blob matching the restaurant bill template.
+ * Narrow 80mm receipt: store header, bill info, item table with QTY/UNIT/TOTAL,
+ * CGST+SGST breakdown, bold GRAND TOTAL, customer/payment footer, THANK YOU.
  */
 export async function generateInvoicePdfBlob(bill: BillData, shopkeeper?: any): Promise<Blob> {
   const invoiceNum = bill.invoice || bill.invoice_number || `INV-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -50,197 +72,252 @@ export async function generateInvoicePdfBlob(bill: BillData, shopkeeper?: any): 
   try {
     const response = await axios.post(
       apiUrl("/api/generate-bill/"),
-      {
-        items: rawItems,
-        grand_total: grandTotal,
-        customer_name: customerName,
-        customer_phone: customerPhone,
-        invoice_number: invoiceNum,
-      },
-      {
-        responseType: "blob",
-        timeout: 2500,
-      }
+      { items: rawItems, grand_total: grandTotal, customer_name: customerName, customer_phone: customerPhone, invoice_number: invoiceNum },
+      { responseType: "blob", timeout: 2500 }
     );
     if (response.data && response.data.size > 100) {
       return new Blob([response.data], { type: "application/pdf" });
     }
-  } catch (err) {
-    // Backend unavailable or slow; proceed to client-side jsPDF fallback
+  } catch {
     console.info("Using client-side PDF engine for invoice:", invoiceNum);
   }
 
-  // 2. Client-side jsPDF generation
-  const doc = new jsPDF({
-    orientation: "portrait",
-    unit: "mm",
-    format: "a4",
-  });
+  // 2. Client-side thermal receipt — 80mm wide
+  const W = 80;
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: [W, 300] });
 
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const storeName = shopkeeper?.store_name || shopkeeper?.business_name || "QBill Smart Store";
-  const storeOwner = shopkeeper?.name || "Shopkeeper";
-  const storePhone = shopkeeper?.phone || "";
-  const storeAddress = shopkeeper?.address || "";
+  const storeName = (shopkeeper?.store_name || shopkeeper?.business_name || "QBill Smart Store").toUpperCase();
+  const storeAddress = shopkeeper?.address || "Your Store Address";
+  const storePhone = shopkeeper?.phone ? `Ph: ${shopkeeper.phone}` : "";
   const storeUpi = shopkeeper?.upi_id || "";
+  const gstin = shopkeeper?.gstin || "";
 
-  // Date formatting
-  const dateStr = new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(bill.created_at ? new Date(bill.created_at) : new Date());
+  const billedDate = bill.created_at ? new Date(bill.created_at) : new Date();
+  const dateStr = new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(billedDate);
+  const timeStr = bill.time || new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false }).format(billedDate);
 
-  const timeStr = bill.time || new Intl.DateTimeFormat("en-IN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  }).format(new Date());
+  const ML = 5;   // margin left
+  const MR = W - 5; // margin right
+  const CX = W / 2; // center
 
-  // Top header banner
-  doc.setFillColor(16, 20, 43); // Dark indigo background
-  doc.rect(0, 0, pageWidth, 42, "F");
+  let y = 7;
 
-  // Store Brand Title
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
-  doc.text(storeName, 14, 18);
+  // ── Store icon box (fork/store symbol) ───────────────────────────────────────
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.6);
+  doc.roundedRect(CX - 6, y, 12, 12, 2, 2, "S");
+  doc.setLineWidth(0.5);
+  doc.line(CX, y + 2.5, CX, y + 9);       // center vertical
+  doc.line(CX - 2.5, y + 2.5, CX - 2.5, y + 5.5); // left prong
+  doc.line(CX + 2.5, y + 2.5, CX + 2.5, y + 5.5); // right prong
+  doc.line(CX - 2.5, y + 5.5, CX + 2.5, y + 5.5); // crossbar
+  doc.setLineWidth(0.2);
+  y += 15;
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(199, 210, 254);
-  const subline = [storeOwner, storePhone, storeAddress].filter(Boolean).join("  •  ");
-  doc.text(subline || "AI-Powered Billing & POS", 14, 25);
-  if (storeUpi) {
-    doc.text(`UPI: ${storeUpi}`, 14, 31);
-  }
-
-  // Right-aligned Invoice Badge
+  // ── Store name ───────────────────────────────────────────────────────────────
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
-  doc.setTextColor(255, 255, 255);
-  doc.text("TAX INVOICE", pageWidth - 14, 18, { align: "right" });
+  doc.setTextColor(0);
+  doc.text(storeName, CX, y, { align: "center", charSpace: 1.2 });
+  y += 5;
+
+  // ── Tagline ──────────────────────────────────────────────────────────────────
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(165, 180, 252);
-  doc.text(invoiceNum, pageWidth - 14, 25, { align: "right" });
-  doc.setFontSize(8);
-  doc.text(`${dateStr} • ${timeStr}`, pageWidth - 14, 31, { align: "right" });
+  doc.setFontSize(7);
+  doc.setTextColor(50);
+  doc.text("GOOD FOOD. GREAT MEMORIES.", CX, y, { align: "center", charSpace: 0.5 });
+  y += 4;
 
-  // Bill To Section
-  let y = 52;
-  doc.setFillColor(248, 250, 252);
-  doc.roundedRect(14, y, pageWidth - 28, 20, 2, 2, "F");
+  // ── Short lines flanking address ─────────────────────────────────────────────
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.5);
+  doc.line(ML, y, ML + 8, y);
+  doc.line(MR - 8, y, MR, y);
+  y += 4;
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.setTextColor(100, 116, 139);
-  doc.text("BILLED TO", 20, y + 6);
+  // ── Address ──────────────────────────────────────────────────────────────────
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(40);
+  const addrLines = doc.splitTextToSize(storeAddress, W - 16);
+  addrLines.forEach((line: string) => { doc.text(line, CX, y, { align: "center" }); y += 3.8; });
+  if (storePhone) { doc.text(storePhone, CX, y, { align: "center" }); y += 3.8; }
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setTextColor(15, 23, 42);
-  doc.text(customerName, 20, y + 13);
-
-  if (customerPhone) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`Phone: ${customerPhone}`, 20, y + 17);
+  // ── GSTIN / UPI ──────────────────────────────────────────────────────────────
+  if (gstin || storeUpi) {
+    y += 1;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(0);
+    doc.text(`GSTIN: ${gstin || storeUpi}`, CX, y, { align: "center" });
+    y += 5;
+  } else {
+    y += 3;
   }
 
-  // Payment Badge on right of Billed To
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.setTextColor(100, 116, 139);
-  doc.text("PAYMENT", pageWidth - 20, y + 6, { align: "right" });
+  // ── Dashed separator ─────────────────────────────────────────────────────────
+  dashedLine(doc, ML, y, MR); y += 5;
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(16, 185, 129); // emerald
-  doc.text(`${status.toUpperCase()} (${paymentMode})`, pageWidth - 20, y + 13, { align: "right" });
-
-  // Items Table Header
-  y = 80;
-  doc.setFillColor(241, 245, 249);
-  doc.rect(14, y, pageWidth - 28, 8, "F");
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.setTextColor(71, 85, 105);
-  doc.text("#", 18, y + 5.5);
-  doc.text("ITEM DESCRIPTION", 28, y + 5.5);
-  doc.text("QTY", 120, y + 5.5, { align: "center" });
-  doc.text("PRICE (Rs.)", 152, y + 5.5, { align: "right" });
-  doc.text("TOTAL (Rs.)", pageWidth - 18, y + 5.5, { align: "right" });
-
-  y += 9;
+  // ── Bill info rows ────────────────────────────────────────────────────────────
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
+  doc.setFontSize(7.5);
+  doc.setTextColor(0);
 
-  let calculatedSum = 0;
+  const COL_COLON = ML + 22;
+  const infoRows: [string, string][] = [
+    ["Bill No.", invoiceNum],
+    ["Date", dateStr],
+    ["Time", timeStr],
+    ["Payment Mode", paymentMode],
+  ];
+
+  infoRows.forEach(([label, value]) => {
+    doc.setFont("helvetica", "normal");
+    doc.text(label, ML, y);
+    doc.text(":", COL_COLON, y);
+    doc.text(value, MR, y, { align: "right" });
+    y += 4.5;
+  });
+
+  y += 1;
+  dashedLine(doc, ML, y, MR); y += 5;
+
+  // ── Items table header ────────────────────────────────────────────────────────
+  const QTY_X = ML + 33;
+  const UNIT_X = ML + 49;
+  const TOTAL_X = MR;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(0);
+  doc.text("ITEM", ML, y);
+  doc.text("QTY", QTY_X, y, { align: "center" });
+  doc.text("UNIT", UNIT_X, y, { align: "center" });
+  doc.text("TOTAL", TOTAL_X, y, { align: "right" });
+  y += 2.5;
+
+  dashedLine(doc, ML, y, MR); y += 4;
+
+  // ── Item rows ─────────────────────────────────────────────────────────────────
+  let subtotalCalc = 0;
   rawItems.forEach((item, idx) => {
     const qty = Number(item.quantity) || 1;
     const price = parseAmount(item.unit_price || 0);
-    const lineTotal = parseAmount(item.total || (qty * price));
-    calculatedSum += lineTotal;
+    const lineTotal = parseAmount(item.total || qty * price);
+    subtotalCalc += lineTotal;
 
-    if (idx % 2 === 1) {
-      doc.setFillColor(248, 250, 252);
-      doc.rect(14, y - 4, pageWidth - 28, 8, "F");
-    }
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(0);
 
-    doc.setTextColor(100, 116, 139);
-    doc.text(String(idx + 1), 18, y + 1.5);
-
-    doc.setTextColor(15, 23, 42);
-    // Truncate long product names
-    const productName = item.product.length > 40 ? item.product.slice(0, 38) + "…" : item.product;
-    doc.text(productName, 28, y + 1.5);
-
-    doc.text(String(qty), 120, y + 1.5, { align: "center" });
-    doc.text(price.toLocaleString("en-IN"), 152, y + 1.5, { align: "right" });
-    doc.text(lineTotal.toLocaleString("en-IN"), pageWidth - 18, y + 1.5, { align: "right" });
-
-    y += 8;
+    const label = `${idx + 1}. ${item.product}`;
+    const nameLines = doc.splitTextToSize(label, 28);
+    doc.text(nameLines, ML, y);
+    doc.text(String(qty), QTY_X, y, { align: "center" });
+    doc.text(fmtRs(price), UNIT_X, y, { align: "center" });
+    doc.text(fmtRs(lineTotal), TOTAL_X, y, { align: "right" });
+    y += nameLines.length > 1 ? nameLines.length * 4 : 5;
   });
 
-  const finalTotal = grandTotal > 0 ? grandTotal : calculatedSum;
+  y += 1;
+  dashedLine(doc, ML, y, MR); y += 5;
 
-  // Divider
-  y += 4;
-  doc.setDrawColor(226, 232, 240);
-  doc.line(14, y, pageWidth - 14, y);
-  y += 6;
-
-  // Grand Total Box
-  doc.setFillColor(241, 245, 249);
-  doc.roundedRect(pageWidth - 85, y, 71, 18, 2, 2, "F");
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(71, 85, 105);
-  doc.text("GRAND TOTAL:", pageWidth - 78, y + 7);
-
-  doc.setFontSize(14);
-  doc.setTextColor(15, 23, 42);
-  doc.text(`Rs. ${finalTotal.toLocaleString("en-IN")}`, pageWidth - 18, y + 13, { align: "right" });
-
-  // Footer notes
-  y = 265;
-  doc.setDrawColor(226, 232, 240);
-  doc.line(14, y, pageWidth - 14, y);
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(100, 116, 139);
-  doc.text("Thank you for shopping with us! 🙏", pageWidth / 2, y + 7, { align: "center" });
+  // ── Tax breakdown ─────────────────────────────────────────────────────────────
+  const finalGrand = grandTotal > 0 ? grandTotal : subtotalCalc;
+  // Back-calculate pre-tax subtotal assuming 5% total GST
+  const preTax = finalGrand / 1.05;
+  const cgst = preTax * 0.025;
+  const sgst = preTax * 0.025;
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
-  doc.setTextColor(148, 163, 184);
-  doc.text("This is a computer-generated tax invoice verified by QBill AI.", pageWidth / 2, y + 12, { align: "center" });
+  doc.setTextColor(0);
+
+  const taxRows: [string, number][] = [
+    ["SUBTOTAL", preTax],
+    ["CGST (2.5%)", cgst],
+    ["SGST (2.5%)", sgst],
+  ];
+  taxRows.forEach(([label, value]) => {
+    doc.text(label, ML, y);
+    doc.text(fmtRs(value), TOTAL_X, y, { align: "right" });
+    y += 4.5;
+  });
+
+  y += 2;
+
+  // ── Grand total ───────────────────────────────────────────────────────────────
+  solidLine(doc, ML, y, MR, 0.7); y += 5;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(0);
+  doc.text("GRAND TOTAL", ML, y);
+  doc.text(fmtRs(finalGrand), TOTAL_X, y, { align: "right" });
+  y += 3;
+  solidLine(doc, ML, y, MR, 0.7); y += 6;
+
+  // ── Dashed separator ──────────────────────────────────────────────────────────
+  dashedLine(doc, ML, y, MR); y += 5;
+
+  // ── Customer info ─────────────────────────────────────────────────────────────
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(0);
+  doc.text("Customer Name", ML, y);
+  doc.text(":", COL_COLON, y);
+  doc.text(customerName, TOTAL_X, y, { align: "right" });
+  y += 4.5;
+
+  if (customerPhone) {
+    doc.text("Phone", ML, y);
+    doc.text(":", COL_COLON, y);
+    doc.text(customerPhone, TOTAL_X, y, { align: "right" });
+    y += 4.5;
+  }
+
+  y += 1;
+  dashedLine(doc, ML, y, MR); y += 5;
+
+  // ── Payment status & mode ─────────────────────────────────────────────────────
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.text("Payment Status", ML, y);
+  doc.setFont("helvetica", "bold");
+  doc.text(status.toUpperCase(), TOTAL_X, y, { align: "right" });
+  y += 4.5;
+
+  doc.setFont("helvetica", "normal");
+  doc.text("Payment Mode", ML, y);
+  doc.setFont("helvetica", "bold");
+  doc.text(paymentMode.toUpperCase(), TOTAL_X, y, { align: "right" });
+  y += 6;
+
+  // ── "Thank you, visit again!" ─────────────────────────────────────────────────
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(0);
+  doc.text("THANK YOU, VISIT AGAIN!", CX, y, { align: "center" });
+  y += 5;
+
+  // ── Decorative star divider ───────────────────────────────────────────────────
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.5);
+  doc.line(CX - 12, y, CX - 4, y);
+  doc.setFillColor(0);
+  doc.circle(CX, y, 0.8, "F");
+  doc.line(CX + 4, y, CX + 12, y);
+  y += 5;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(0);
+  doc.text("THANK YOU", CX, y, { align: "center" });
+  y += 4;
+
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(8);
+  doc.setTextColor(60);
+  doc.text("Visit Again!", CX, y, { align: "center" });
 
   return doc.output("blob");
 }
