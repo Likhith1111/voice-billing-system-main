@@ -29,9 +29,18 @@ def get_current_shopkeeper(request):
         email = request.GET.get('shopkeeper_email')
 
     if email:
-        clean_email = str(email).strip()
-        return ShopkeeperProfile.objects.filter(email__iexact=clean_email).first()
-    return None
+        clean_email = str(email).strip().lower()
+        shop = ShopkeeperProfile.objects.filter(email__iexact=clean_email).first()
+        if not shop:
+            name_part = clean_email.split('@')[0].replace('.', ' ').title()
+            shop = ShopkeeperProfile.objects.create(
+                name=name_part,
+                email=clean_email,
+                store_name=f"{name_part}'s Store",
+                upi_id=f"{clean_email.split('@')[0]}@upi"
+            )
+        return shop
+    return ShopkeeperProfile.objects.first()
 
 class LoginView(APIView):
     def post(self, request):
@@ -194,18 +203,24 @@ class DashboardDataView(APIView):
                 'notifications': [],
             })
 
+        from django.db.models import Q
+        import re
+
         customers = Customer.objects.filter(shopkeeper=shopkeeper).order_by('-id')
         products = Product.objects.filter(shopkeeper=shopkeeper).order_by('-id')
-        bills = Bill.objects.filter(shopkeeper=shopkeeper).order_by('-id')
+        bills = Bill.objects.filter(Q(shopkeeper=shopkeeper) | Q(shopkeeper__isnull=True)).order_by('-id')
         notifications = Notification.objects.filter(shopkeeper=shopkeeper).order_by('-created_at')[:10]
 
         total_sales = 0
         for b in bills:
-            clean = str(b.amount).replace('₹', '').replace(',', '').strip()
+            raw = str(b.amount or '0')
+            clean = re.sub(r'[^\d.]', '', raw)
             try:
-                total_sales += int(float(clean))
-            except ValueError:
+                if clean:
+                    total_sales += float(clean)
+            except (ValueError, TypeError):
                 pass
+        total_sales = int(round(total_sales))
 
         total_bills = bills.count()
         total_customers = customers.count()
@@ -301,7 +316,8 @@ class BillViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         shopkeeper = get_current_shopkeeper(self.request)
         if shopkeeper:
-            return Bill.objects.filter(shopkeeper=shopkeeper).order_by('-id')
+            from django.db.models import Q
+            return Bill.objects.filter(Q(shopkeeper=shopkeeper) | Q(shopkeeper__isnull=True)).order_by('-id')
         return Bill.objects.all().order_by('-id')
 
     def perform_create(self, serializer):

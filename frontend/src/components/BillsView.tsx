@@ -16,6 +16,7 @@ const avatarStyles: Record<string, string> = {
 
 import { getStoreBills, addStoreBill } from '../lib/offlineStore';
 import { openWhatsApp } from '../lib/whatsapp';
+import { downloadInvoicePdf } from '../lib/pdfGenerator';
 
 export default function BillsView() {
   const { shopkeeper } = useAuth();
@@ -40,20 +41,29 @@ export default function BillsView() {
 
   const fetchBills = () => {
     setLoading(true);
+    const localBills = getStoreBills(shopkeeper?.email);
+
     axios.get(apiUrl('/api/bills/'), {
       params: { shopkeeper_email: shopkeeper?.email },
       timeout: 3000
     })
       .then(res => {
-        if (Array.isArray(res.data) && res.data.length > 0) {
-          setBills(res.data);
-        } else {
-          setBills(getStoreBills(shopkeeper?.email));
-        }
+        const serverBills = Array.isArray(res.data) ? res.data : [];
+        const billMap = new Map();
+        localBills.forEach((b: any) => {
+          const key = b.invoice || b.invoice_number || b.id;
+          if (key) billMap.set(key, b);
+        });
+        serverBills.forEach((b: any) => {
+          const key = b.invoice || b.invoice_number || b.id;
+          if (key) billMap.set(key, { ...billMap.get(key), ...b });
+        });
+        const merged = Array.from(billMap.values());
+        setBills(merged.length > 0 ? merged : localBills);
         setLoading(false);
       })
-      .catch(err => {
-        setBills(getStoreBills(shopkeeper?.email));
+      .catch(() => {
+        setBills(localBills);
         setLoading(false);
       });
   };
@@ -94,50 +104,30 @@ export default function BillsView() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    axios.post(apiUrl('/api/bills/'), { ...formData, shopkeeper_email: shopkeeper?.email }, { timeout: 3000 })
-      .then(() => {
-        toast.success('Bill generated successfully');
-        setShowModal(false);
-        fetchBills();
-      })
-      .catch(() => {
-        addStoreBill(formData, shopkeeper?.email);
-        toast.success('Bill generated successfully');
-        setShowModal(false);
-        setBills(getStoreBills(shopkeeper?.email));
-      });
+    const cleanAmount = formData.amount.startsWith('₹') ? formData.amount : `₹${formData.amount}`;
+    const billToSave = { ...formData, amount: cleanAmount, created_at: new Date().toISOString() };
+
+    try {
+      const res = await axios.post(apiUrl('/api/bills/'), { ...billToSave, shopkeeper_email: shopkeeper?.email }, { timeout: 3000 });
+      const saved = res.data?.invoice ? res.data : billToSave;
+      addStoreBill(saved, shopkeeper?.email);
+      toast.success('Bill generated! Downloading PDF...');
+      setShowModal(false);
+      fetchBills();
+      await downloadInvoicePdf(saved, shopkeeper);
+    } catch {
+      const saved = addStoreBill(billToSave, shopkeeper?.email);
+      toast.success('Bill generated! Downloading PDF...');
+      setShowModal(false);
+      setBills(getStoreBills(shopkeeper?.email));
+      await downloadInvoicePdf(saved, shopkeeper);
+    }
   };
 
   const handleDownloadPdf = async (bill: any) => {
-    try {
-      const cleanAmount = String(bill.amount || '0').replace('₹', '').replace(/,/g, '').trim();
-      const grandTotal = parseFloat(cleanAmount) || 0;
-      
-      const response = await axios.post(
-        apiUrl("/api/generate-bill/"),
-        {
-          items: [{ product: "Retail Purchase", quantity: 1, unit_price: grandTotal }],
-          grand_total: grandTotal,
-          customer_name: bill.customer || "Walk-in Customer",
-          customer_phone: "",
-        },
-        { responseType: "blob" }
-      );
-
-      const url = window.URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `${bill.invoice || 'invoice'}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      toast.success("Invoice PDF downloaded successfully!");
-    } catch (e) {
-      console.error(e);
-      toast.error("Failed to generate PDF");
-    }
+    await downloadInvoicePdf(bill, shopkeeper);
   };
 
   const handleSendWhatsApp = (bill: any) => {

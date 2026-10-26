@@ -8,7 +8,7 @@ import ImageBilling from "../components/ImageBilling";
 import BarcodeBilling from "../components/BarcodeBilling";
 import axios from "axios";
 import { apiUrl } from "../config/api";
-import { getStoreProducts, getStoreBills } from "../lib/offlineStore";
+import { getStoreProducts, getStoreBills, getStoreCustomers, computeDashboardStats } from "../lib/offlineStore";
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -154,64 +154,62 @@ export default function Home() {
 
   const fetchDashboardData = () => {
     if (activeNav !== "Dashboard") return;
+
+    const localProds = getStoreProducts(shopkeeper?.email);
+    const localBills = getStoreBills(shopkeeper?.email);
+    const localCusts = getStoreCustomers(shopkeeper?.email);
+
     axios.get(apiUrl("/api/dashboard-data/"), {
       params: { shopkeeper_email: shopkeeper?.email },
       timeout: 3000
     })
       .then(response => {
         const data = response.data;
-        setSummaryStats(data.summaryStats);
-        setSalesByHour(data.salesByHour);
-        setRevenueTrend(data.revenueTrend);
-        setRecentBills(data.recentBills);
-        setLowStock(data.lowStock);
-        setTopProducts(data.topProducts);
-        setRecentCustomers(data.recentCustomers);
+        const serverBills = Array.isArray(data.recentBills) ? data.recentBills : [];
+
+        // Merge local bills and server bills by invoice
+        const billMap = new Map();
+        localBills.forEach((b: any) => {
+          const key = b.invoice || b.invoice_number || b.id;
+          if (key) billMap.set(key, b);
+        });
+        serverBills.forEach((b: any) => {
+          const key = b.invoice || b.invoice_number || b.id;
+          if (key) billMap.set(key, { ...billMap.get(key), ...b });
+        });
+        const mergedBills = Array.from(billMap.values());
+
+        // Compute local stats to ensure analytics never show 0 when bills exist
+        const computed = computeDashboardStats(
+          mergedBills.length > 0 ? mergedBills : localBills,
+          localProds,
+          localCusts
+        );
+
+        // If backend summary has 0 bills but local/merged has bills, prefer computed
+        const useComputed = (mergedBills.length > 0 && (Number(data.summaryStats?.billsGenerated || 0) === 0));
+        
+        setSummaryStats(useComputed ? computed.summaryStats : data.summaryStats || computed.summaryStats);
+        setSalesByHour(data.salesByHour?.length && !useComputed ? data.salesByHour : computed.salesByHour);
+        setRevenueTrend(data.revenueTrend?.length && !useComputed ? data.revenueTrend : computed.revenueTrend);
+        setRecentBills(mergedBills.length > 0 ? mergedBills : serverBills);
+        setLowStock(data.lowStock || []);
+        setTopProducts(data.topProducts?.length ? data.topProducts : localProds.slice(0, 5));
+        setRecentCustomers(data.recentCustomers?.length ? data.recentCustomers : localCusts.slice(0, 5));
         setNotifications(data.notifications || []);
         setLoading(false);
       })
       .catch(error => {
-        const localProds = getStoreProducts(shopkeeper?.email);
-        const localBills = getStoreBills(shopkeeper?.email);
+        // Fallback for offline mode or mobile without direct backend reachability
+        const computed = computeDashboardStats(localBills, localProds, localCusts);
 
-        const totalRev = localBills.reduce((sum: number, b: any) => sum + (parseFloat(b.total || b.amount || 0) || 0), 0);
-
-        setSummaryStats({
-          todaySales: `₹${(totalRev || 0).toLocaleString('en-IN')}`,
-          todaySalesMeta: localBills.length > 0 ? "Updated just now" : "No sales today",
-          billsGenerated: localBills.length,
-          billsGeneratedMeta: `${localBills.length} invoices to date`,
-          totalCustomers: Math.min(localBills.length, 10),
-          totalCustomersMeta: `${Math.min(localBills.length, 10)} registered`,
-          totalProducts: localProds.length,
-          totalProductsMeta: `${localProds.length} in catalog`,
-          lowStock: 0,
-          lowStockMeta: "All in stock",
-          monthlyRevenue: `₹${(totalRev || 0).toLocaleString('en-IN')}`,
-          monthlyRevenueMeta: "Current month",
-          voiceBillsToday: localBills.length,
-          accuracy: "100%"
-        });
-        setSalesByHour([
-          { hour: "9 AM", sales: 0 },
-          { hour: "12 PM", sales: 0 },
-          { hour: "3 PM", sales: 0 },
-          { hour: "6 PM", sales: 0 },
-          { hour: "9 PM", sales: 0 }
-        ]);
-        setRevenueTrend([
-          { day: "Mon", value: 0, revenue: 0 },
-          { day: "Tue", value: 0, revenue: 0 },
-          { day: "Wed", value: 0, revenue: 0 },
-          { day: "Thu", value: 0, revenue: 0 },
-          { day: "Fri", value: 0, revenue: 0 },
-          { day: "Sat", value: 0, revenue: 0 },
-          { day: "Sun", value: 0, revenue: 0 }
-        ]);
+        setSummaryStats(computed.summaryStats);
+        setSalesByHour(computed.salesByHour);
+        setRevenueTrend(computed.revenueTrend);
         setRecentBills(localBills);
         setLowStock([]);
         setTopProducts(localProds.slice(0, 5));
-        setRecentCustomers([]);
+        setRecentCustomers(localCusts.slice(0, 5));
         setNotifications([
           {
             id: 1,
@@ -228,8 +226,27 @@ export default function Home() {
 
   useEffect(() => {
     fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, 15000); // Refresh every 15s
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchDashboardData, 5000); // Refresh every 5s for live dashboard
+
+    // Refresh when a bill is added from another tab (cross-tab localStorage events)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key && e.key.startsWith("quantum_bills_")) {
+        fetchDashboardData();
+      }
+    };
+    // Refresh immediately when a bill is added in this same tab
+    const handleBillAdded = () => {
+      fetchDashboardData();
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("qbill-bill-added", handleBillAdded);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("qbill-bill-added", handleBillAdded);
+    };
   }, [activeNav, shopkeeper?.email]);
 
   const searchResults = useMemo(() => {

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { Html5Qrcode } from "html5-qrcode";
 import { BrowserMultiFormatReader, DecodeHintType, BarcodeFormat } from "@zxing/library";
-import { ScanLine, Trash2, Send, CheckCircle2, AlertCircle, Upload, Image as ImageIcon, Crop as CropIcon, RefreshCw, Zap } from "lucide-react";
+import { ScanLine, Trash2, Send, CheckCircle2, AlertCircle, Upload, Image as ImageIcon, Crop as CropIcon, RefreshCw, Zap, Download } from "lucide-react";
 import { toast } from "sonner";
 import QRCode from "react-qr-code";
 import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
@@ -20,6 +20,7 @@ import {
   addStoreCustomer,
   type ProductItem,
 } from "../lib/offlineStore";
+import { downloadInvoicePdf } from "../lib/pdfGenerator";
 
 export default function BarcodeBilling() {
   const { shopkeeper } = useAuth();
@@ -568,11 +569,13 @@ export default function BarcodeBilling() {
       payment_mode = "Cash",
       status = "Paid",
   }: any) => {
+      const _now = new Date();
       const billRecord = {
           invoice: invoiceNumber,
           customer: customerNameToSave,
           amount: `₹${grandTotal}`,
-          time: "Just now",
+          time: new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }).format(_now),
+          created_at: _now.toISOString(),
           status: status,
           payment_mode: payment_mode,
           initials: customerInitials,
@@ -582,14 +585,18 @@ export default function BarcodeBilling() {
       };
 
       try {
-          await axios.post(apiUrl("/api/bills/"), billRecord, { timeout: 3000 });
-          toast.success(`Sale recorded via ${payment_mode}! Bill generated.`);
+          const res = await axios.post(apiUrl("/api/bills/"), billRecord, { timeout: 3000 });
+          const savedBill = res.data?.invoice ? res.data : billRecord;
+          addStoreBill(savedBill, shopkeeper?.email);
+          toast.success(`Sale recorded via ${payment_mode}! Bill generated. Downloading PDF...`);
+          await downloadInvoicePdf(savedBill, shopkeeper);
           setBillCustomerName("");
           handleClear();
       } catch (err) {
           console.warn("Backend offline, saving bill locally:", err);
-          addStoreBill(billRecord, shopkeeper?.email);
-          toast.success(`Sale recorded via ${payment_mode}! Bill generated.`);
+          const savedBill = addStoreBill(billRecord, shopkeeper?.email);
+          toast.success(`Sale recorded via ${payment_mode}! Bill generated. Downloading PDF...`);
+          await downloadInvoicePdf(savedBill, shopkeeper);
           setBillCustomerName("");
           handleClear();
       }
@@ -843,12 +850,32 @@ export default function BarcodeBilling() {
                     />
                 </div>
 
-                {/* Action buttons — 2×2 grid on mobile, row on desktop */}
-                <div className="grid grid-cols-2 gap-3 md:flex md:justify-end md:gap-3">
-                    <button onClick={handleClear} className="flex items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3.5 text-sm font-bold text-rose-600 shadow-sm transition hover:bg-rose-100 active:scale-[0.98]"><Trash2 className="h-4 w-4" /> Clear</button>
-                    <button onClick={() => setShowPreview(true)} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.98]">Preview</button>
-                    <button onClick={sendToWhatsApp} className="flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#25D366]/30 transition hover:bg-[#20bd5a] active:scale-[0.98]"><Send className="h-4 w-4" /> WhatsApp</button>
-                    <button onClick={handleCompleteSale} className="flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-600/30 transition hover:bg-violet-700 active:scale-[0.98]"><CheckCircle2 className="h-4 w-4" /> Complete Sale</button>
+                {/* Action buttons — grid on mobile, row on desktop */}
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5 md:flex md:justify-end md:gap-3">
+                    <button onClick={handleClear} className="flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-3 text-xs sm:text-sm font-bold text-rose-600 shadow-sm transition hover:bg-rose-100 active:scale-[0.98]"><Trash2 className="h-4 w-4" /> Clear</button>
+                    <button onClick={() => setShowPreview(true)} className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-3 text-xs sm:text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.98]">Preview</button>
+                    <button 
+                        onClick={() => {
+                            const grandTotal = calculateGrandTotal();
+                            if (grandTotal <= 0) {
+                                toast.error("Please add items/prices before downloading PDF.");
+                                return;
+                            }
+                            downloadInvoicePdf({
+                                invoice: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
+                                customer: billCustomerName.trim() || "Walk-in Customer",
+                                amount: `₹${grandTotal}`,
+                                items: items,
+                                payment_mode: "Cash",
+                                status: "Paid"
+                            }, shopkeeper);
+                        }}
+                        className="flex items-center justify-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-3 text-xs sm:text-sm font-bold text-indigo-700 shadow-sm transition hover:bg-indigo-100 active:scale-[0.98]"
+                    >
+                        <Download className="h-4 w-4 text-indigo-600" /> PDF
+                    </button>
+                    <button onClick={sendToWhatsApp} className="flex items-center justify-center gap-1.5 rounded-xl bg-[#25D366] px-3 py-3 text-xs sm:text-sm font-bold text-white shadow-lg shadow-[#25D366]/30 transition hover:bg-[#20bd5a] active:scale-[0.98]"><Send className="h-4 w-4" /> WhatsApp</button>
+                    <button onClick={handleCompleteSale} className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 rounded-xl bg-violet-600 px-4 py-3 text-xs sm:text-sm font-bold text-white shadow-lg shadow-violet-600/30 transition hover:bg-violet-700 active:scale-[0.98]"><CheckCircle2 className="h-4 w-4" /> Complete Sale</button>
                 </div>
             </div>
         )}
@@ -874,7 +901,7 @@ export default function BarcodeBilling() {
             </div>
         )}
 
-        {/* Similar Preview and WhatsApp Modals as ImageBilling (omitted for brevity but normally here) */}
+        {/* Similar Preview and WhatsApp Modals as ImageBilling */}
         {showPreview && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                 <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-8 shadow-2xl">
@@ -900,7 +927,24 @@ export default function BarcodeBilling() {
                             <QRCode value={`upi://pay?pa=${encodeURIComponent((shopkeeper as any)?.upi_id || "qbill@upi")}&pn=${encodeURIComponent(shopkeeper?.business_name || "QBill Store")}&am=${calculateGrandTotal()}&cu=INR`} size={120} level="M" />
                         </div>
                     </div>
-                    <button onClick={() => setShowPreview(false)} className="mt-6 w-full rounded-xl bg-slate-900 py-3.5 text-sm font-bold text-white shadow-lg transition hover:bg-slate-800">Close Preview</button>
+                    <div className="mt-6 grid grid-cols-2 gap-3">
+                        <button 
+                            onClick={() => {
+                                downloadInvoicePdf({
+                                    invoice: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
+                                    customer: billCustomerName.trim() || "Walk-in Customer",
+                                    amount: `₹${calculateGrandTotal()}`,
+                                    items: items,
+                                    payment_mode: "Cash",
+                                    status: "Paid"
+                                }, shopkeeper);
+                            }}
+                            className="flex items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 py-3 text-xs font-bold text-indigo-700 shadow transition hover:bg-indigo-100 active:scale-[0.98]"
+                        >
+                            <Download className="h-4 w-4" /> Download PDF
+                        </button>
+                        <button onClick={() => setShowPreview(false)} className="rounded-xl bg-slate-900 py-3 text-xs font-bold text-white shadow-lg transition hover:bg-slate-800 active:scale-[0.98]">Close Preview</button>
+                    </div>
                 </div>
             </div>
         )}

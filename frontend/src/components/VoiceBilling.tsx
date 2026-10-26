@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
-import { Mic2, Square, Loader2, Sparkles, CheckCircle2, AlertCircle, Trash2, Send } from "lucide-react";
+import { Mic2, Square, Loader2, Sparkles, CheckCircle2, AlertCircle, Trash2, Send, Download } from "lucide-react";
 import { toast } from "sonner";
 import QRCode from "react-qr-code";
 import { useAuth } from "../App";
@@ -9,6 +9,7 @@ import PaymentModeModal, { type PaymentMode } from "./PaymentModeModal";
 import WhatsAppModal from "./WhatsAppModal";
 import { apiUrl } from "../config/api";
 import { parseVoiceBillLocally, addStoreBill, getStoreCustomers, addStoreCustomer } from "../lib/offlineStore";
+import { downloadInvoicePdf } from "../lib/pdfGenerator";
 
 export default function VoiceBilling() {
   const { shopkeeper } = useAuth();
@@ -315,11 +316,13 @@ export default function VoiceBilling() {
       payment_mode = "Cash",
       status = "Paid",
   }: any) => {
+      const _now = new Date();
       const billRecord = {
           invoice: invoiceNumber,
           customer: customerNameToSave,
           amount: `₹${grandTotal}`,
-          time: "Just now",
+          time: new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }).format(_now),
+          created_at: _now.toISOString(),
           status: status,
           payment_mode: payment_mode,
           initials: customerInitials,
@@ -329,13 +332,17 @@ export default function VoiceBilling() {
       };
 
       try {
-          await axios.post(apiUrl("/api/bills/"), billRecord, { timeout: 3000 });
-          toast.success(`Sale recorded via ${payment_mode}! Bill generated.`);
+          const res = await axios.post(apiUrl("/api/bills/"), billRecord, { timeout: 3000 });
+          const savedBill = res.data?.invoice ? res.data : billRecord;
+          addStoreBill(savedBill, shopkeeper?.email);
+          toast.success(`Sale recorded via ${payment_mode}! Bill generated. Downloading PDF...`);
+          await downloadInvoicePdf(savedBill, shopkeeper);
           handleClear();
       } catch (err) {
           console.warn("Backend offline, saving bill locally:", err);
-          addStoreBill(billRecord, shopkeeper?.email);
-          toast.success(`Sale recorded via ${payment_mode}! Bill generated.`);
+          const savedBill = addStoreBill(billRecord, shopkeeper?.email);
+          toast.success(`Sale recorded via ${payment_mode}! Bill generated. Downloading PDF...`);
+          await downloadInvoicePdf(savedBill, shopkeeper);
           handleClear();
       }
   };
@@ -665,29 +672,49 @@ export default function VoiceBilling() {
                     />
                 </div>
 
-                {/* Action buttons — 2×2 grid on mobile, single row on desktop */}
-                <div className="grid grid-cols-2 gap-3 md:flex md:justify-end md:gap-3">
+                {/* Action buttons — grid on mobile, single row on desktop */}
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5 md:flex md:justify-end md:gap-3">
                     <button 
                         onClick={handleClear}
-                        className="flex items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3.5 text-sm font-bold text-rose-600 shadow-sm transition hover:bg-rose-100 active:scale-[0.98]"
+                        className="flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-3 text-xs sm:text-sm font-bold text-rose-600 shadow-sm transition hover:bg-rose-100 active:scale-[0.98]"
                     >
                         <Trash2 className="h-4 w-4" /> Clear
                     </button>
                     <button 
                         onClick={() => setShowPreview(true)}
-                        className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-indigo-600 active:scale-[0.98]"
+                        className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-3 text-xs sm:text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-indigo-600 active:scale-[0.98]"
                     >
                         Preview
                     </button>
                     <button 
+                        onClick={() => {
+                            const grandTotal = calculateGrandTotal();
+                            if (grandTotal <= 0) {
+                                toast.error("Please add items/prices before downloading PDF.");
+                                return;
+                            }
+                            downloadInvoicePdf({
+                                invoice: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
+                                customer: billCustomerName.trim() || "Walk-in Customer",
+                                amount: `₹${grandTotal}`,
+                                items: items,
+                                payment_mode: "Cash",
+                                status: "Paid"
+                            }, shopkeeper);
+                        }}
+                        className="flex items-center justify-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-3 text-xs sm:text-sm font-bold text-indigo-700 shadow-sm transition hover:bg-indigo-100 active:scale-[0.98]"
+                    >
+                        <Download className="h-4 w-4 text-indigo-600" /> PDF
+                    </button>
+                    <button 
                         onClick={sendToWhatsApp}
-                        className="flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#25D366]/30 transition hover:bg-[#20bd5a] active:scale-[0.98]"
+                        className="flex items-center justify-center gap-1.5 rounded-xl bg-[#25D366] px-3 py-3 text-xs sm:text-sm font-bold text-white shadow-lg shadow-[#25D366]/30 transition hover:bg-[#20bd5a] active:scale-[0.98]"
                     >
                         <Send className="h-4 w-4" /> WhatsApp
                     </button>
                     <button 
                         onClick={handleCompleteSale}
-                        className="flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-600/30 transition hover:bg-violet-700 active:scale-[0.98]"
+                        className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 rounded-xl bg-violet-600 px-4 py-3 text-xs sm:text-sm font-bold text-white shadow-lg shadow-violet-600/30 transition hover:bg-violet-700 active:scale-[0.98]"
                     >
                         <CheckCircle2 className="h-4 w-4" /> Complete Sale
                     </button>
@@ -721,7 +748,24 @@ export default function VoiceBilling() {
                             <QRCode value={`upi://pay?pa=${encodeURIComponent((shopkeeper as any)?.upi_id || "qbill@upi")}&pn=${encodeURIComponent(shopkeeper?.business_name || "QBill Store")}&am=${calculateGrandTotal()}&cu=INR`} size={120} level="M" />
                         </div>
                     </div>
-                    <button onClick={() => setShowPreview(false)} className="mt-6 w-full rounded-xl bg-slate-900 py-3.5 text-sm font-bold text-white shadow-lg transition hover:bg-slate-800 active:scale-[0.98]">Close Preview</button>
+                    <div className="mt-6 grid grid-cols-2 gap-3">
+                        <button 
+                            onClick={() => {
+                                downloadInvoicePdf({
+                                    invoice: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
+                                    customer: billCustomerName.trim() || "Walk-in Customer",
+                                    amount: `₹${calculateGrandTotal()}`,
+                                    items: items,
+                                    payment_mode: "Cash",
+                                    status: "Paid"
+                                }, shopkeeper);
+                            }}
+                            className="flex items-center justify-center gap-2 rounded-xl border border-violet-200 bg-violet-50 py-3 text-xs font-bold text-violet-700 shadow transition hover:bg-violet-100 active:scale-[0.98]"
+                        >
+                            <Download className="h-4 w-4" /> Download PDF
+                        </button>
+                        <button onClick={() => setShowPreview(false)} className="rounded-xl bg-slate-900 py-3 text-xs font-bold text-white shadow-lg transition hover:bg-slate-800 active:scale-[0.98]">Close Preview</button>
+                    </div>
                 </div>
             </div>
         )}
