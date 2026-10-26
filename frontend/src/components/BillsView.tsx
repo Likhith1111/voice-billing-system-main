@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { FileText, Plus, X, Eye, Search, Filter, Download, QrCode, Send } from 'lucide-react';
+import { FileText, Plus, X, Eye, Search, Filter, Download, QrCode, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../App';
 import UpiPaymentModal from './UpiPaymentModal';
@@ -14,7 +14,7 @@ const avatarStyles: Record<string, string> = {
   rose: "bg-rose-100 text-rose-700",
 };
 
-import { getStoreBills, addStoreBill } from '../lib/offlineStore';
+import { getStoreBills, addStoreBill, deleteStoreBill, clearAllStoreBills } from '../lib/offlineStore';
 import { openWhatsApp } from '../lib/whatsapp';
 import { downloadInvoicePdf } from '../lib/pdfGenerator';
 
@@ -153,6 +153,44 @@ export default function BillsView() {
     setSelectedBill(bill);
   };
 
+  const handleDeleteBill = async (bill: any) => {
+    const invKey = bill.invoice || bill.invoice_number || bill.id;
+    if (!window.confirm(`Delete invoice ${invKey}? This will permanently remove it.`)) {
+      return;
+    }
+    // Delete from backend if numeric ID
+    if (bill.id && !isNaN(Number(bill.id))) {
+      try {
+        await axios.delete(apiUrl(`/api/bills/${bill.id}/`), { timeout: 3000 });
+      } catch (err) {
+        console.warn('Backend delete skipped/offline:', err);
+      }
+    }
+    deleteStoreBill(invKey, shopkeeper?.email);
+    setBills(prev => prev.filter(b => (b.invoice || b.invoice_number || b.id) !== invKey && String(b.id) !== String(bill.id)));
+    if (selectedBill && ((selectedBill.invoice && selectedBill.invoice === bill.invoice) || selectedBill.id === bill.id)) {
+      setSelectedBill(null);
+    }
+    toast.success('Bill deleted successfully');
+  };
+
+  const handleClearAllBills = async () => {
+    if (!window.confirm('Are you sure you want to delete ALL generated bills? This cannot be undone.')) {
+      return;
+    }
+    try {
+      await Promise.all(
+        bills
+          .filter(b => b.id && !isNaN(Number(b.id)))
+          .map(b => axios.delete(apiUrl(`/api/bills/${b.id}/`), { timeout: 3000 }).catch(() => {}))
+      );
+    } catch {}
+    clearAllStoreBills(shopkeeper?.email);
+    setBills([]);
+    setSelectedBill(null);
+    toast.success('All generated bills deleted');
+  };
+
   const filteredBills = useMemo(() => {
     return bills.filter(bill => {
       const matchesSearch = 
@@ -187,6 +225,15 @@ export default function BillsView() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {bills.length > 0 && (
+            <button
+              onClick={handleClearAllBills}
+              className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm font-bold text-rose-600 transition hover:bg-rose-100 shadow-sm"
+              title="Delete all generated bills"
+            >
+              <Trash2 className="h-4 w-4" /> Clear All Bills
+            </button>
+          )}
           <button
             onClick={handleOpenModal}
             className="flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-600/20 transition hover:bg-violet-700"
@@ -309,6 +356,13 @@ export default function BillsView() {
                   >
                     View
                   </button>
+                  <button
+                    onClick={() => handleDeleteBill(bill)}
+                    className="flex items-center justify-center rounded-lg bg-rose-50 p-2 text-rose-600 hover:bg-rose-100 transition"
+                    title="Delete bill"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -423,6 +477,13 @@ export default function BillsView() {
                         >
                           <Eye className="h-4 w-4" />
                         </button>
+                        <button
+                          onClick={() => handleDeleteBill(bill)}
+                          className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                          title="Delete bill"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -498,6 +559,13 @@ export default function BillsView() {
                 className="flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-600/20 transition hover:bg-violet-700"
               >
                 <Download className="h-4 w-4" /> PDF
+              </button>
+              <button
+                onClick={() => handleDeleteBill(selectedBill)}
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm font-bold text-rose-600 transition hover:bg-rose-100"
+                title="Delete this bill"
+              >
+                <Trash2 className="h-4 w-4" /> Delete
               </button>
               <button
                 onClick={() => setSelectedBill(null)}

@@ -275,6 +275,40 @@ export function addStoreBill(bill: any, email?: string): any {
   return newBill;
 }
 
+// Delete a bill from offline store by invoice number or id
+export function deleteStoreBill(invoiceOrId: string, email?: string): boolean {
+  const bills = getStoreBills(email);
+  const before = bills.length;
+  const filtered = bills.filter((b: any) =>
+    b.invoice !== invoiceOrId &&
+    b.invoice_number !== invoiceOrId &&
+    String(b.id) !== String(invoiceOrId)
+  );
+
+  if (filtered.length === before) return false; // nothing removed
+
+  const storeEmail = (email || "default").toLowerCase().trim();
+  localStorage.setItem(`quantum_bills_${storeEmail}`, JSON.stringify(filtered));
+
+  // Notify dashboard to refresh
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("qbill-bill-added", { detail: { email: storeEmail } }));
+  }
+
+  return true;
+}
+
+// Clear all bills from offline store
+export function clearAllStoreBills(email?: string): void {
+  const storeEmail = (email || "default").toLowerCase().trim();
+  localStorage.setItem(`quantum_bills_${storeEmail}`, JSON.stringify([]));
+
+  // Notify dashboard to refresh
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("qbill-bill-added", { detail: { email: storeEmail } }));
+  }
+}
+
 // Calculate dashboard analytics from bills
 export function computeDashboardStats(bills: any[], products: any[] = [], customers: any[] = []) {
   const totalBills = bills.length;
