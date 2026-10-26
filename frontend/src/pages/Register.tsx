@@ -2,12 +2,13 @@ import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import axios from "axios";
 import { toast } from "sonner";
+import { useAuth } from "../App";
 import { apiUrl } from "../config/api";
-
 import { registerShopkeeperOffline } from "../lib/offlineStore";
 
 export default function Register() {
   const [, setLocation] = useLocation();
+  const { login } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,29 +18,55 @@ export default function Register() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    const cleanEmail = email.trim();
+    const cleanPassword = password.trim();
+    const cleanName = name.trim();
+    const cleanStore = storeName.trim();
+
     try {
       const response = await axios.post(apiUrl("/api/register/"), {
-        name,
-        email,
-        password,
-        store_name: storeName,
+        name: cleanName,
+        email: cleanEmail,
+        password: cleanPassword,
+        store_name: cleanStore,
       }, { timeout: 3500 });
+
       if (response.data.success) {
-        registerShopkeeperOffline({ name, email, password, store_name: storeName });
-        toast.success("Registration successful! You can now log in.");
-        setLocation("/login");
+        const offlineResult = registerShopkeeperOffline({
+          name: cleanName,
+          email: cleanEmail,
+          password: cleanPassword,
+          store_name: cleanStore,
+        });
+        const shopData = response.data.shopkeeper || offlineResult.shopkeeper || {
+          id: Date.now(),
+          name: cleanName,
+          email: cleanEmail,
+          store_name: cleanStore,
+          phone: "9876543210",
+        };
+        login(shopData);
+        toast.success(`Welcome to QBill, ${cleanName}! Your store is ready.`);
+        setLocation("/");
         return;
       }
     } catch (error: any) {
       if (error.response?.data?.error) {
         toast.error(error.response.data.error);
+        setLoading(false);
         return;
       }
       // If backend server is unreachable (cloud/mobile offline mode), register locally
-      const res = registerShopkeeperOffline({ name, email, password, store_name: storeName });
-      if (res.success) {
-        toast.success("Store created successfully! You can now log in.");
-        setLocation("/login");
+      const res = registerShopkeeperOffline({
+        name: cleanName,
+        email: cleanEmail,
+        password: cleanPassword,
+        store_name: cleanStore,
+      });
+      if (res.success && res.shopkeeper) {
+        login(res.shopkeeper);
+        toast.success(`Store created successfully! Welcome, ${cleanName}!`);
+        setLocation("/");
         return;
       } else {
         toast.error(res.error || "An error occurred during registration");

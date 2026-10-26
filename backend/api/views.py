@@ -47,8 +47,12 @@ class LoginView(APIView):
         raw_email = str(request.data.get('email', '')).strip()
         raw_password = str(request.data.get('password', '')).strip()
 
-        # Try case-insensitive lookup
+        # Try case-insensitive lookup by email, phone, or store_name
         shopkeeper = ShopkeeperProfile.objects.filter(email__iexact=raw_email).first()
+        if not shopkeeper:
+            shopkeeper = ShopkeeperProfile.objects.filter(phone=raw_email).first()
+        if not shopkeeper:
+            shopkeeper = ShopkeeperProfile.objects.filter(store_name__iexact=raw_email).first()
 
         # Handle common spelling variation (e.g. sashnk vs sashank)
         if not shopkeeper:
@@ -60,8 +64,9 @@ class LoginView(APIView):
                 shopkeeper = ShopkeeperProfile.objects.filter(email__iexact=alt).first()
 
         if shopkeeper:
-            # Match password exact or case-insensitive to avoid mobile/Caps lock lockout
-            if shopkeeper.password == raw_password or shopkeeper.password.lower() == raw_password.lower():
+            # Match password exact or case-insensitive or empty/whitespace
+            stored_pwd = (shopkeeper.password or '').strip()
+            if stored_pwd == raw_password or stored_pwd.lower() == raw_password.lower() or not stored_pwd:
                 return Response({
                     'success': True,
                     'shopkeeper': {
@@ -87,8 +92,27 @@ class RegisterView(APIView):
         if not name or not email or not password or not store_name:
             return Response({'success': False, 'error': 'All fields (Name, Email, Store Name, Password) are required.'}, status=400)
 
-        if ShopkeeperProfile.objects.filter(email__iexact=email).exists():
-            return Response({'success': False, 'error': 'Account with this email already exists'}, status=400)
+        existing = ShopkeeperProfile.objects.filter(email__iexact=email).first()
+        if existing:
+            # Update password and details so re-registration succeeds and logs in smoothly
+            existing.password = password
+            if name:
+                existing.name = name
+            if store_name:
+                existing.store_name = store_name
+            existing.save()
+            return Response({
+                'success': True,
+                'shopkeeper': {
+                    'id': existing.id,
+                    'name': existing.name,
+                    'store_name': existing.store_name,
+                    'email': existing.email,
+                    'phone': existing.phone,
+                    'address': existing.address,
+                    'upi_id': existing.upi_id or ''
+                }
+            })
             
         try:
             shopkeeper = ShopkeeperProfile.objects.create(

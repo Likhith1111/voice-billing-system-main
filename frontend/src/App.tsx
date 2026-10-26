@@ -1,14 +1,13 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useState, createContext, useContext } from "react";
 import axios from "axios";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
-
 import Register from "./pages/Register";
 import InstallAppBanner from "./components/InstallAppBanner";
 
@@ -37,8 +36,12 @@ function Router() {
       <Route path="/">
         {isAuthenticated ? <Home /> : <Login />}
       </Route>
-      <Route path="/login" component={Login} />
-      <Route path="/register" component={Register} />
+      <Route path="/login">
+        {isAuthenticated ? <Redirect to="/" /> : <Login />}
+      </Route>
+      <Route path="/register">
+        {isAuthenticated ? <Redirect to="/" /> : <Register />}
+      </Route>
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

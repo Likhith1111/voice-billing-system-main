@@ -235,6 +235,7 @@ export default function BillsView() {
             </button>
           )}
           <button
+          
             onClick={handleOpenModal}
             className="flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-600/20 transition hover:bg-violet-700"
           >

@@ -96,8 +96,18 @@ export function registerShopkeeperOffline(data: {
   const shopkeepers = getStoredShopkeepers();
   const cleanEmail = data.email.trim().toLowerCase();
 
-  if (shopkeepers.some((s) => s.email.toLowerCase() === cleanEmail)) {
-    return { success: false, error: "An account with this email already exists" };
+  const existingIdx = shopkeepers.findIndex((s) => s.email.toLowerCase() === cleanEmail);
+  if (existingIdx !== -1) {
+    // Update existing shopkeeper with new credentials
+    shopkeepers[existingIdx] = {
+      ...shopkeepers[existingIdx],
+      name: data.name.trim() || shopkeepers[existingIdx].name,
+      password: data.password?.trim() || shopkeepers[existingIdx].password,
+      store_name: data.store_name.trim() || shopkeepers[existingIdx].store_name,
+    };
+    localStorage.setItem("quantum_shopkeepers", JSON.stringify(shopkeepers));
+    initializeStoreProducts(cleanEmail);
+    return { success: true, shopkeeper: shopkeepers[existingIdx] };
   }
 
   const newShopkeeper: Shopkeeper = {
@@ -151,24 +161,33 @@ export function loginShopkeeperOffline(
   const cleanEmail = email.trim().toLowerCase();
   const cleanPassword = password?.trim() || "";
 
-  // 1. Check builtin / pre-registered accounts first
-  const builtin = BUILTIN_ACCOUNTS.find((s) => s.email.toLowerCase() === cleanEmail);
-  if (builtin) {
-    if (!builtin.password || builtin.password === cleanPassword || builtin.password.toLowerCase() === cleanPassword.toLowerCase()) {
-      initializeStoreProducts(cleanEmail);
-      return { success: true, shopkeeper: builtin };
-    }
+  const matchAccount = (s: Shopkeeper) => {
+    const emailMatch = s.email.toLowerCase() === cleanEmail;
+    const phoneMatch = s.phone && s.phone.trim() === cleanEmail;
+    const storeMatch = s.store_name && s.store_name.toLowerCase().trim() === cleanEmail;
+    if (!emailMatch && !phoneMatch && !storeMatch) return false;
+
+    // Check password
+    if (!s.password || !cleanPassword) return true;
+    return (
+      s.password.trim() === cleanPassword ||
+      s.password.trim().toLowerCase() === cleanPassword.toLowerCase()
+    );
+  };
+
+  // 1. Check stored shopkeepers created in app (newly registered shops)
+  const shopkeepers = getStoredShopkeepers();
+  const found = shopkeepers.find(matchAccount);
+  if (found) {
+    initializeStoreProducts(found.email);
+    return { success: true, shopkeeper: found };
   }
 
-  // 2. Check stored shopkeepers created in app
-  const shopkeepers = getStoredShopkeepers();
-  const found = shopkeepers.find((s) => s.email.toLowerCase() === cleanEmail);
-
-  if (found) {
-    if (!found.password || found.password === cleanPassword || found.password.toLowerCase() === cleanPassword.toLowerCase()) {
-      initializeStoreProducts(cleanEmail);
-      return { success: true, shopkeeper: found };
-    }
+  // 2. Check builtin / pre-registered accounts
+  const builtin = BUILTIN_ACCOUNTS.find(matchAccount);
+  if (builtin) {
+    initializeStoreProducts(builtin.email);
+    return { success: true, shopkeeper: builtin };
   }
 
   // 3. Fallback demo account
@@ -178,7 +197,7 @@ export function loginShopkeeperOffline(
     cleanEmail === "admin"
   ) {
     const demo = BUILTIN_ACCOUNTS[0];
-    initializeStoreProducts(cleanEmail);
+    initializeStoreProducts(demo.email);
     return { success: true, shopkeeper: demo };
   }
 

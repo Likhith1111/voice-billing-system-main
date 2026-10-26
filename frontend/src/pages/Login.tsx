@@ -1,19 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import axios from "axios";
 import { useAuth } from "../App";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 import { apiUrl } from "../config/api";
-import { loginShopkeeperOffline } from "../lib/offlineStore";
+import { loginShopkeeperOffline, registerShopkeeperOffline } from "../lib/offlineStore";
 
 export default function Login() {
   const [, setLocation] = useLocation();
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      setLocation("/");
+    }
+  }, [isAuthenticated, setLocation]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,34 +28,44 @@ export default function Login() {
     const cleanPassword = password.trim();
 
     try {
-      const response = await axios.post(apiUrl("/api/login/"), {
-        email: cleanEmail,
-        password: cleanPassword,
-      }, { timeout: 3500 });
-      if (response.data.success) {
+      const response = await axios.post(
+        apiUrl("/api/login/"),
+        {
+          email: cleanEmail,
+          password: cleanPassword,
+        },
+        { timeout: 3500 }
+      );
+
+      if (response.data.success && response.data.shopkeeper) {
+        // Cache credentials in offlineStore so offline logins on this device work
+        registerShopkeeperOffline({
+          name: response.data.shopkeeper.name,
+          email: response.data.shopkeeper.email,
+          password: cleanPassword,
+          store_name: response.data.shopkeeper.store_name,
+        });
         login(response.data.shopkeeper);
         toast.success(`Welcome back, ${response.data.shopkeeper.name}!`);
-        setLocation("/"); // Redirect to dashboard
+        setLocation("/");
         return;
       }
     } catch (error: any) {
-      if (error.response?.data?.error) {
-        toast.error(error.response.data.error);
-        return;
-      }
-      // If network unreachable / mobile offline mode, authenticate against offline store
-      const res = loginShopkeeperOffline(cleanEmail, cleanPassword);
-      if (res.success && res.shopkeeper) {
-        login(res.shopkeeper);
-        toast.success(`Welcome back, ${res.shopkeeper.name}!`);
-        setLocation("/");
-        return;
-      } else {
-        toast.error(res.error || "Invalid email or password");
-      }
-    } finally {
-      setLoading(false);
+      // Backend may be offline, port unreachable, or account created offline
+      console.warn("Backend login failed, checking offline store:", error);
     }
+
+    // Fallback: Check offline store
+    const res = loginShopkeeperOffline(cleanEmail, cleanPassword);
+    if (res.success && res.shopkeeper) {
+      login(res.shopkeeper);
+      toast.success(`Welcome back, ${res.shopkeeper.name}!`);
+      setLocation("/");
+      return;
+    }
+
+    toast.error("Invalid email/phone or password. Please check your credentials.");
+    setLoading(false);
   };
 
   return (
