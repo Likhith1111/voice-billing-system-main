@@ -15,6 +15,7 @@ const avatarStyles: Record<string, string> = {
 };
 
 import { getStoreBills, addStoreBill } from '../lib/offlineStore';
+import { openWhatsApp } from '../lib/whatsapp';
 
 export default function BillsView() {
   const { shopkeeper } = useAuth();
@@ -151,8 +152,11 @@ export default function BillsView() {
       ``,
       `Thank you for shopping with us! 🙏`,
     ];
-    const text = encodeURIComponent(lines.join('\n'));
-    window.open(`https://wa.me/?text=${text}`, '_blank');
+    toast.success("Opening WhatsApp…");
+    openWhatsApp({
+      phone: bill.phone || bill.customer_phone || "",
+      message: lines.join('\n'),
+    });
   };
 
   const handlePreview = (bill: any) => {

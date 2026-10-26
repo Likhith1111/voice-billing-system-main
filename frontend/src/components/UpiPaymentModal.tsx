@@ -62,8 +62,12 @@ export default function UpiPaymentModal({
   };
 
   const openUpiApp = (appName: string) => {
-    window.open(upiUrl, "_blank");
     toast.info(`Opening ${appName}…`);
+    try {
+      window.location.href = upiUrl;
+    } catch {
+      window.open(upiUrl, "_blank");
+    }
   };
 
   const handleConfirm = () => {

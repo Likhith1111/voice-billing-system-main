@@ -21,6 +21,7 @@ import QRCode from "react-qr-code";
 import { useAuth } from "../App";
 import UpiPaymentModal from "./UpiPaymentModal";
 import PaymentModeModal, { type PaymentMode } from "./PaymentModeModal";
+import WhatsAppModal from "./WhatsAppModal";
 import { apiUrl } from "../config/api";
 import {
   getStoreProducts,
@@ -67,10 +68,6 @@ export default function ImageBilling() {
 
   // WhatsApp Modal State
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
-  const [newCustomerPhone, setNewCustomerPhone] = useState("");
-  const [newCustomerName, setNewCustomerName] = useState("");
   const [billCustomerName, setBillCustomerName] = useState("");
 
   // Payment Mode & UPI State
@@ -584,70 +581,7 @@ Output only raw JSON, no markdown formatting or commentary.`;
       toast.error("Please add prices to products before sending.");
       return;
     }
-    axios
-      .get(apiUrl("/api/customers/"), {
-        headers: { "X-Shopkeeper-Email": shopkeeper?.email || "" },
-        timeout: 2500,
-      })
-      .then((res) => setCustomers(res.data))
-      .catch(() => setCustomers(getStoreCustomers(shopkeeper?.email)));
     setShowWhatsAppModal(true);
-  };
-
-  const handleSendWhatsAppMessage = async () => {
-    let phone = "";
-    if (selectedCustomer) {
-      phone = selectedCustomer.phone;
-    } else if (newCustomerPhone) {
-      phone = newCustomerPhone;
-      if (newCustomerName) {
-        try {
-          await axios.post(apiUrl("/api/customers/"), {
-            name: newCustomerName,
-            phone: newCustomerPhone,
-            initials: newCustomerName.substring(0, 2).toUpperCase(),
-            tone: "violet",
-            shopkeeper_email: shopkeeper?.email,
-          }, { timeout: 2500 });
-        } catch {
-          addStoreCustomer({
-            name: newCustomerName,
-            phone: newCustomerPhone,
-            initials: newCustomerName.substring(0, 2).toUpperCase(),
-            tone: "violet",
-          }, shopkeeper?.email);
-        }
-      }
-    } else {
-      toast.error("Please select a customer or enter a phone number.");
-      return;
-    }
-
-    const formattedPhone = phone.replace(/\D/g, "");
-    const finalPhone =
-      formattedPhone.length === 10 ? `91${formattedPhone}` : formattedPhone;
-    const grandTotal = calculateGrandTotal();
-
-    const upiId = (shopkeeper as any)?.upi_id || "qbill@upi";
-    const storeName = shopkeeper?.business_name || "QBill Store";
-    const upiPayUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(storeName)}&am=${grandTotal}&cu=INR`;
-
-    let message = `*🛍️ ${storeName} Invoice*\n\n`;
-    items.forEach((item, i) => {
-      message += `${i + 1}. ${item.product}\n`;
-      message += `    Qty: ${item.quantity} x ₹${item.unit_price} = ₹${item.quantity * item.unit_price}\n`;
-    });
-    message += `\n*Grand Total: ₹${grandTotal}*\n`;
-    message += "\n*💳 Payment Options:*\n";
-    message += `1. Click to pay: ${upiPayUrl}\n`;
-    message += `2. Or copy UPI ID: ${upiId}\n`;
-    message += "\nThank you for shopping with us!";
-
-    window.open(
-      `https://api.whatsapp.com/send?phone=${finalPhone}&text=${encodeURIComponent(message)}`,
-      "_blank"
-    );
-    setShowWhatsAppModal(false);
   };
 
   // ── Complete Sale ────────────────────────────────────────────────────────────
@@ -1484,88 +1418,14 @@ Output only raw JSON, no markdown formatting or commentary.`;
       )}
 
       {/* ── WhatsApp Modal ── */}
-      {showWhatsAppModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="relative w-full max-w-md animate-in zoom-in-95 rounded-3xl bg-white p-8 shadow-2xl duration-200">
-            <button
-              onClick={() => setShowWhatsAppModal(false)}
-              className="absolute right-4 top-4 rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-            >
-              ✕
-            </button>
-            <h2 className="mb-6 flex items-center gap-2 text-xl font-black text-slate-900">
-              <Send className="h-5 w-5 text-[#25D366]" /> Send via WhatsApp
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Select Existing Customer
-                </label>
-                <select
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:bg-white"
-                  onChange={(e) => {
-                    const c = customers.find(
-                      (cu) => cu.id.toString() === e.target.value
-                    );
-                    setSelectedCustomer(c || null);
-                    if (c) {
-                      setNewCustomerPhone("");
-                      setNewCustomerName("");
-                    }
-                  }}
-                  value={selectedCustomer?.id || ""}
-                >
-                  <option value="">-- Choose Customer --</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.phone})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="relative flex items-center py-2">
-                <div className="flex-grow border-t border-slate-200" />
-                <span className="mx-4 flex-shrink-0 text-xs font-medium text-slate-400">
-                  OR ENTER NEW
-                </span>
-                <div className="flex-grow border-t border-slate-200" />
-              </div>
-              <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  New Phone Number *
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. 9876543210"
-                  value={newCustomerPhone}
-                  disabled={!!selectedCustomer}
-                  onChange={(e) => setNewCustomerPhone(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:bg-white disabled:opacity-50"
-                />
-              </div>
-              <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Customer Name (Optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Name to save"
-                  value={newCustomerName}
-                  disabled={!!selectedCustomer}
-                  onChange={(e) => setNewCustomerName(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:bg-white disabled:opacity-50"
-                />
-              </div>
-            </div>
-            <button
-              onClick={handleSendWhatsAppMessage}
-              className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] py-3.5 text-sm font-bold text-white shadow-lg shadow-[#25D366]/30 transition hover:bg-[#20bd5a] active:scale-[0.98]"
-            >
-              Send Invoice
-            </button>
-          </div>
-        </div>
-      )}
+      <WhatsAppModal
+        isOpen={showWhatsAppModal}
+        onClose={() => setShowWhatsAppModal(false)}
+        items={items}
+        grandTotal={calculateGrandTotal()}
+        initialCustomerName={billCustomerName}
+        shopkeeper={shopkeeper}
+      />
 
       {/* Payment Mode Selection Modal */}
       {showPaymentModeModal && pendingInvoice && (
