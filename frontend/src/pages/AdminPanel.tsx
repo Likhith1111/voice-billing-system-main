@@ -127,27 +127,84 @@ export default function AdminPanel() {
   const [deleting, setDeleting] = useState(false);
 
   // --- Handlers: Admin Login / Logout ---
+  const OFFLINE_ADMIN_CREDENTIALS = [
+    { username: "admin", password: "admin123" },
+    { username: "admin@example.com", password: "admin123" },
+    { username: "admin@qbill.com", password: "admin123" },
+  ];
+
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginLoading(true);
+    const uname = loginUsername.trim();
+    const pwd = loginPassword.trim();
+
+    // 1. Try backend authentication first
     try {
       const res = await axios.post(apiUrl("/api/admin/login/"), {
-        username: loginUsername.trim(),
-        password: loginPassword.trim(),
-      });
+        username: uname,
+        password: pwd,
+      }, { timeout: 4000 });
+
       if (res.data.success) {
         localStorage.setItem("qbill_admin_token", res.data.token);
         localStorage.setItem("qbill_admin_user", JSON.stringify(res.data.admin));
         setAdminUser(res.data.admin);
         setIsAdminAuthenticated(true);
         toast.success("Welcome, Super Administrator!");
+        setLoginLoading(false);
+        return;
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || "Invalid admin credentials (admin / admin123)");
-    } finally {
+
+      // Backend responded but rejected credentials
+      toast.error(res.data?.error || "Invalid admin credentials.");
       setLoginLoading(false);
+      return;
+
+    } catch (err: any) {
+      // Network/connection error — backend may not be running
+      const isNetworkError = !err.response;
+      const backendError = err.response?.data?.error;
+
+      if (!isNetworkError && backendError) {
+        // Backend replied with an explicit rejection
+        toast.error(backendError);
+        setLoginLoading(false);
+        return;
+      }
+
+      // 2. Offline fallback: match against known admin credentials
+      const matched = OFFLINE_ADMIN_CREDENTIALS.some(
+        (c) => c.username === uname && c.password === pwd
+      );
+
+      if (matched) {
+        const offlineAdmin = {
+          id: 0,
+          username: "admin",
+          email: "admin@qbill.com",
+          is_staff: true,
+          is_superuser: true,
+          role: "Super Administrator (Offline Mode)",
+        };
+        const offlineToken = `offline_admin_${Date.now()}`;
+        localStorage.setItem("qbill_admin_token", offlineToken);
+        localStorage.setItem("qbill_admin_user", JSON.stringify(offlineAdmin));
+        setAdminUser(offlineAdmin);
+        setIsAdminAuthenticated(true);
+        toast.success("Logged in (offline mode — backend unreachable)");
+      } else {
+        toast.error(
+          isNetworkError
+            ? "Backend not running. Use admin / admin123 to enter offline mode."
+            : "Invalid admin credentials. Use admin / admin123"
+        );
+      }
     }
+
+    setLoginLoading(false);
   };
+
 
   const handleAdminLogout = () => {
     localStorage.removeItem("qbill_admin_token");
@@ -163,8 +220,8 @@ export default function AdminPanel() {
     try {
       setRefreshing(true);
       const [overviewRes, shopsRes] = await Promise.all([
-        axios.get(apiUrl("/api/admin/overview/")),
-        axios.get(apiUrl("/api/admin/shops/")),
+        axios.get(apiUrl("/api/admin/overview/"), { timeout: 5000 }),
+        axios.get(apiUrl("/api/admin/shops/"), { timeout: 5000 }),
       ]);
 
       if (overviewRes.data.success) {
@@ -176,14 +233,24 @@ export default function AdminPanel() {
       if (shopsRes.data.success) {
         setShops(shopsRes.data.shops || []);
       }
-    } catch (err) {
-      console.error("Error fetching admin data:", err);
-      toast.error("Failed to sync admin data with server");
+    } catch (err: any) {
+      const isOffline = !err.response;
+      if (isOffline) {
+        // Backend not running — show empty state with a helpful banner (no toast spam)
+        console.warn("Admin: Backend unreachable, showing offline state.");
+        setSummary(null);
+        setShops([]);
+        setTopShops([]);
+        setRecentActivity([]);
+      } else {
+        toast.error("Error fetching platform data from server.");
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
+
 
   useEffect(() => {
     if (isAdminAuthenticated) {
