@@ -38,6 +38,7 @@ import {
   Zap,
   Camera,
   ScanLine,
+  ShieldCheck,
 } from "lucide-react";
 import {
   Area,
@@ -52,6 +53,7 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 import { useAuth } from "../App";
+import { Link } from "wouter";
 
 const navGroups = [
   {
@@ -324,6 +326,11 @@ export default function Home() {
 
         <div className="border-t border-white/10 p-4">
           <button onClick={() => handleNav("Settings")} className="mb-2 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[13px] font-medium text-white/50 transition hover:bg-white/8 hover:text-white"><Settings2 className="h-[17px] w-[17px]" /> Settings</button>
+          <Link href="/admin" className="mb-2 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-[12px] font-medium text-violet-300/60 transition hover:bg-violet-400/10 hover:text-violet-200 border border-violet-400/10">
+            <ShieldCheck className="h-4 w-4 shrink-0 text-violet-400/60" />
+            <span className="flex-1">Platform Admin</span>
+            <span className="rounded-md bg-violet-400/10 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-violet-300/70">ADMIN</span>
+          </Link>
           <div className="flex items-center gap-3 rounded-2xl bg-white/[0.06] p-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-200 to-orange-300 text-xs font-bold text-orange-800">
               {shopkeeper?.name ? shopkeeper.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : 'SK'}

@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import DashboardDataView, LoginView, RegisterView, UpdateProfileView, CustomerViewSet, ProductViewSet, BillViewSet, VoiceBillingView, ImageBillingView, GenerateBillView, DetectBarcodeView
+from .admin_views import AdminLoginView, AdminOverviewView, AdminShopsListView, AdminShopDetailView, AdminShopDeleteView
 
 router = DefaultRouter()
 router.register(r'customers', CustomerViewSet, basename='customer')
@@ -17,5 +18,12 @@ urlpatterns = [
     path('image-billing/', ImageBillingView.as_view(), name='image-billing'),
     path('detect-barcode/', DetectBarcodeView.as_view(), name='detect-barcode'),
     path('generate-bill/', GenerateBillView.as_view(), name='generate-bill'),
+    # Platform Admin Endpoints
+    path('admin/login/', AdminLoginView.as_view(), name='admin-login'),
+    path('admin/overview/', AdminOverviewView.as_view(), name='admin-overview'),
+    path('admin/shops/', AdminShopsListView.as_view(), name='admin-shops-list'),
+    path('admin/shops/<int:shop_id>/', AdminShopDetailView.as_view(), name='admin-shop-detail'),
+    path('admin/shops/<int:shop_id>/delete/', AdminShopDeleteView.as_view(), name='admin-shop-delete'),
     path('', include(router.urls)),
 ]
+

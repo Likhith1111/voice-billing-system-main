@@ -9,6 +9,7 @@ import axios from "axios";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Register from "./pages/Register";
+import AdminPanel from "./pages/AdminPanel";
 import InstallAppBanner from "./components/InstallAppBanner";
 
 // --- Auth Context ---
@@ -41,6 +42,9 @@ function Router() {
       </Route>
       <Route path="/register">
         {isAuthenticated ? <Redirect to="/" /> : <Register />}
+      </Route>
+      <Route path="/admin">
+        <AdminPanel />
       </Route>
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}
