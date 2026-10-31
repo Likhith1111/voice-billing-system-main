@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
-import { Mic2, Square, Loader2, Sparkles, CheckCircle2, AlertCircle, Trash2, Send, Download } from "lucide-react";
+import { Mic2, Square, Loader2, Sparkles, CheckCircle2, AlertCircle, Trash2, Send, Download, Plus, Minus, X } from "lucide-react";
 import { toast } from "sonner";
 import QRCode from "react-qr-code";
 import { useAuth } from "../App";
@@ -8,8 +8,19 @@ import UpiPaymentModal from "./UpiPaymentModal";
 import PaymentModeModal, { type PaymentMode } from "./PaymentModeModal";
 import WhatsAppModal from "./WhatsAppModal";
 import { apiUrl } from "../config/api";
-import { parseVoiceBillLocally, addStoreBill, getStoreCustomers, addStoreCustomer } from "../lib/offlineStore";
+import { parseVoiceBillLocally, addStoreBill, getStoreProducts } from "../lib/offlineStore";
 import { downloadInvoicePdf } from "../lib/pdfGenerator";
+
+const defaultCatalog = [
+  { id: 1, name: "Fresh Milk", detail: "Dairy · 500 ml", price: 32, emoji: "🥛" },
+  { id: 2, name: "Farm Bread", detail: "Bakery · 400 g", price: 40, emoji: "🍞" },
+  { id: 3, name: "Premium Rice", detail: "Grains · 1 kg", price: 68, emoji: "🍚" },
+  { id: 4, name: "Farm Eggs", detail: "Eggs · 6 pieces", price: 48, emoji: "🥚" },
+  { id: 5, name: "Red Apples", detail: "Produce · 1 kg", price: 140, emoji: "🍎" },
+  { id: 6, name: "Cooking Oil", detail: "Grocery · 1 litre", price: 155, emoji: "🫗" },
+  { id: 7, name: "Choco Biscuits", detail: "Snacks · 1 pack", price: 25, emoji: "🍪" },
+  { id: 8, name: "Orange Juice", detail: "Beverage · 1 litre", price: 90, emoji: "🧃" },
+];
 
 export default function VoiceBilling() {
   const { shopkeeper } = useAuth();
@@ -19,9 +30,13 @@ export default function VoiceBilling() {
   const [billingData, setBillingData] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [error, setError] = useState("");
+  const [approved, setApproved] = useState(false);
   const recognitionRef = useRef<any>(null);
   const accumulatedTranscriptRef = useRef("");
   const isManuallyStoppedRef = useRef(false);
+
+  // Draft counter
+  const [draftNumber] = useState(() => Math.floor(100 + Math.random() * 900));
 
   // Billing & WhatsApp State
   const [showPreview, setShowPreview] = useState(false);
@@ -36,7 +51,27 @@ export default function VoiceBilling() {
   const [lang, setLang] = useState("en-IN");
   const isRecordingRef = useRef(false);
 
-  // Clean cleanup on unmount
+  // Available shortcut products: combine store catalog or defaults
+  const [catalogItems, setCatalogItems] = useState(defaultCatalog);
+
+  useEffect(() => {
+    try {
+      const prods = getStoreProducts(shopkeeper?.email);
+      if (prods && prods.length > 0) {
+        const mapped = prods.slice(0, 8).map((p: any, idx: number) => ({
+          id: p.id || idx + 10,
+          name: p.name || p.title || "Product",
+          detail: p.category || (p.stock ? `Stock: ${p.stock}` : "General Item"),
+          price: Number(p.price || p.value || 50),
+          emoji: p.category?.toLowerCase().includes("fruit") ? "🍎" : 
+                 p.category?.toLowerCase().includes("dairy") ? "🥛" : 
+                 p.category?.toLowerCase().includes("grain") ? "🍚" : "📦"
+        }));
+        setCatalogItems(mapped);
+      }
+    } catch (e) {}
+  }, [shopkeeper?.email]);
+
   useEffect(() => {
     return () => {
       if (recognitionRef.current) {
@@ -48,24 +83,18 @@ export default function VoiceBilling() {
   }, []);
 
   const requestMicPermission = async () => {
-    // In Android Chrome, holding a getUserMedia stream locks the microphone hardware
-    // and causes Google Speech Recognition to fail with:
-    // "Speech Recognition and Synthesis from Google cannot record now as Chrome is recording."
-    // To prevent this conflict, we immediately close any test audio stream, allowing
-    // SpeechRecognition exclusive access to the microphone.
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach(track => track.stop());
-        // Short pause to guarantee OS audio session release
-        await new Promise(r => setTimeout(r, 150));
+        stream.getTracks().forEach((track) => track.stop());
+        await new Promise((r) => setTimeout(r, 150));
       }
       setError("");
       return true;
     } catch (err: any) {
       console.warn("Microphone permission check:", err);
       if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-        setError("Microphone permission was denied. Please allow microphone in your browser URL settings.");
+        setError("Microphone permission was denied. Please allow microphone access in your browser settings.");
         return false;
       }
       return true;
@@ -73,7 +102,7 @@ export default function VoiceBilling() {
   };
 
   const startRecording = async () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       setError("Your browser does not support Speech Recognition. Please use Google Chrome or Microsoft Edge.");
       return;
@@ -90,7 +119,7 @@ export default function VoiceBilling() {
 
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
-    recognition.interimResults = false;  // Only use final results to avoid duplicate interim re-fires on restart
+    recognition.interimResults = false;
     recognition.lang = lang;
     recognition.maxAlternatives = 1;
 
@@ -101,7 +130,6 @@ export default function VoiceBilling() {
     };
 
     recognition.onresult = (event: any) => {
-      // Only process genuinely new final results from this event batch
       let newFinals = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
         if (event.results[i].isFinal) {
@@ -116,21 +144,17 @@ export default function VoiceBilling() {
       }
     };
 
-
     recognition.onerror = (event: any) => {
       console.warn("Speech recognition notice:", event.error);
-      if (event.error === "no-speech") {
-        // Silence pause in Chrome, do not kill recording
-        return;
-      }
+      if (event.error === "no-speech") return;
       if (event.error === "not-allowed") {
-        setError("Microphone access was denied. Please click the lock icon in your browser URL bar and allow Microphone.");
+        setError("Microphone access was denied. Please click the permissions icon in your browser URL bar.");
         setIsRecording(false);
         isRecordingRef.current = false;
         return;
       }
       if (event.error === "network") {
-        setError("Speech network connection issue. You can still type items or click quick sample items below.");
+        setError("Speech network connection issue. You can still type items or click quick products below.");
         setIsRecording(false);
         isRecordingRef.current = false;
         return;
@@ -177,7 +201,6 @@ export default function VoiceBilling() {
       } catch (err) {}
     }
 
-    // Auto-process speech immediately on Stop
     setTimeout(() => {
       const captured = accumulatedTranscriptRef.current.trim() || transcript.trim();
       if (captured) {
@@ -208,14 +231,14 @@ export default function VoiceBilling() {
 
       if (response.data && response.data.success) {
         setBillingData(response.data);
-        setItems(
-          response.data.items.map((i: any) => ({
-            ...i,
-            quantity: i.quantity || 1,
-            unit_price: i.unit_price || 0,
-          }))
-        );
-        toast.success("Bill processed successfully!");
+        const newItems = response.data.items.map((i: any) => ({
+          ...i,
+          quantity: i.quantity || 1,
+          unit_price: i.unit_price || 0,
+        }));
+        setItems(newItems);
+        setApproved(false);
+        toast.success("Products matched successfully!");
         setProcessing(false);
         return;
       }
@@ -223,594 +246,687 @@ export default function VoiceBilling() {
       console.warn("Backend voice billing unreachable, using offline voice parser:", err);
     }
 
-    // 2. Offline Smart Voice Parser fallback (works 100% offline & on mobile)
+    // 2. Offline Smart Voice Parser fallback
     try {
       const localResult = parseVoiceBillLocally(textToProcess, shopkeeper?.email);
       if (localResult && localResult.items.length > 0) {
         setBillingData(localResult);
-        setItems(
-          localResult.items.map((i: any) => ({
-            ...i,
-            quantity: i.quantity || 1,
-            unit_price: i.unit_price || 0,
-          }))
-        );
+        const newItems = localResult.items.map((i: any) => ({
+          ...i,
+          quantity: i.quantity || 1,
+          unit_price: i.unit_price || 0,
+        }));
+        setItems(newItems);
+        setApproved(false);
         toast.success("Voice recognized and matched with store catalog!");
       } else {
-        setError("Could not identify the product and price. Please speak or type again.");
+        // Fallback rule matching for sample demo items
+        const rules: [string, RegExp, number][] = [
+          ["Fresh Milk", /\bmilk\b/i, 32],
+          ["Farm Bread", /\bbread\b/i, 40],
+          ["Premium Rice", /\brice\b/i, 68],
+          ["Farm Eggs", /\beggs?\b/i, 48],
+          ["Red Apples", /\bapples?\b/i, 140],
+          ["Cooking Oil", /\boil\b/i, 155],
+          ["Choco Biscuits", /\bbiscuits?\b|\bcookies?\b/i, 25],
+          ["Orange Juice", /\bjuice\b/i, 90],
+        ];
+
+        let matched: any[] = [];
+        for (const [prodName, regex, price] of rules) {
+          const match = textToProcess.match(regex);
+          if (match) {
+            const prefix = textToProcess.slice(0, match.index);
+            const numMatch = prefix.match(/(\d+)\s*(?:x\s*)?$/);
+            const qty = numMatch ? parseInt(numMatch[1], 10) : 1;
+            matched.push({ product: prodName, quantity: qty, unit_price: price });
+          }
+        }
+
+        if (matched.length > 0) {
+          setItems(matched);
+          setApproved(false);
+          toast.success(`${matched.length} product(s) matched from catalog!`);
+        } else {
+          setError("Could not identify the product and price. Try 'Add 2 milk and 1 bread'.");
+        }
       }
     } catch (localErr) {
       console.error("Local parsing error:", localErr);
-      setError("Could not identify the product and price. Please speak or type again.");
+      setError("Could not parse command. Please speak or type again.");
     } finally {
       setProcessing(false);
     }
   };
 
-  const processBill = () => processBillWithText();
-
   const handleClear = () => {
-      setTranscript("");
-      setBillingData(null);
-      setItems([]);
-      setBillCustomerName("");
+    setTranscript("");
+    setBillingData(null);
+    setItems([]);
+    setBillCustomerName("");
+    setApproved(false);
+    toast.info("Invoice draft cleared.");
   };
 
   const handleItemChange = (index: number, field: string, value: number) => {
-      const updatedItems = [...items];
-      updatedItems[index][field] = value;
-      setItems(updatedItems);
+    const updated = [...items];
+    updated[index][field] = value;
+    setItems(updated);
+    setApproved(false);
+  };
+
+  const removeItem = (index: number) => {
+    const updated = items.filter((_, idx) => idx !== index);
+    setItems(updated);
+    setApproved(false);
+  };
+
+  const addQuickProduct = (product: any) => {
+    const existingIndex = items.findIndex((i) => i.product.toLowerCase() === product.name.toLowerCase());
+    if (existingIndex >= 0) {
+      const updated = [...items];
+      updated[existingIndex].quantity += 1;
+      setItems(updated);
+    } else {
+      setItems([
+        ...items,
+        {
+          product: product.name,
+          quantity: 1,
+          unit_price: product.price,
+          matched_in_db: true,
+        },
+      ]);
+    }
+    setApproved(false);
+    toast.success(`Added ${product.name}`);
+  };
+
+  const calculateSubtotal = () => {
+    return items.reduce((total, item) => total + (item.quantity * item.unit_price), 0);
+  };
+
+  const calculateTax = () => {
+    const sub = calculateSubtotal();
+    return Math.round(sub * 0.05 * 100) / 100;
   };
 
   const calculateGrandTotal = () => {
-      return items.reduce((total, item) => total + (item.quantity * item.unit_price), 0);
+    return calculateSubtotal() + calculateTax();
+  };
+
+  const totalItemCount = () => {
+    return items.reduce((sum, item) => sum + (item.quantity || 1), 0);
   };
 
   const sendToWhatsApp = () => {
-      const grandTotal = calculateGrandTotal();
-      if (grandTotal <= 0) {
-          toast.error("Please add prices to the products before sending.");
-          return;
-      }
-      setShowWhatsAppModal(true);
+    const grandTotal = calculateGrandTotal();
+    if (grandTotal <= 0) {
+      toast.error("Please add items to the invoice before sharing.");
+      return;
+    }
+    setShowWhatsAppModal(true);
   };
 
   const handleCompleteSale = async () => {
-      const grandTotal = calculateGrandTotal();
-      if (grandTotal <= 0) {
-          toast.error("Please add prices before completing the sale.");
-          return;
-      }
-      const invoiceNumber = `INV-${Math.floor(1000 + Math.random() * 9000)}`;
-      const customerNameToSave = billCustomerName.trim() || "Walk-in Customer";
-      const customerInitials = billCustomerName.trim() ? billCustomerName.trim().substring(0, 2).toUpperCase() : "WC";
-      setPendingInvoice({ invoiceNumber, customerNameToSave, customerInitials, grandTotal });
-      setShowPaymentModeModal(true);
+    const grandTotal = calculateGrandTotal();
+    if (grandTotal <= 0) {
+      toast.error("Please add items to the invoice before finalizing.");
+      return;
+    }
+    if (!approved) {
+      toast.error("Please check Cashier Approval before finalizing.");
+      return;
+    }
+    const invoiceNumber = `SQB-${Math.floor(1000 + Math.random() * 9000)}`;
+    const customerNameToSave = billCustomerName.trim() || "Walk-in Customer";
+    const customerInitials = billCustomerName.trim() ? billCustomerName.trim().substring(0, 2).toUpperCase() : "WC";
+    setPendingInvoice({ invoiceNumber, customerNameToSave, customerInitials, grandTotal });
+    setShowPaymentModeModal(true);
   };
 
   const handlePaymentModeSelected = async (
-      mode: PaymentMode,
-      status: "Paid" | "Pending",
-      cashDetails?: { received: number; change: number }
+    mode: PaymentMode,
+    status: "Paid" | "Pending",
+    cashDetails?: { received: number; change: number }
   ) => {
-      setShowPaymentModeModal(false);
-      if (mode === "UPI") {
-          setShowUpiModal(true);
-      } else {
-          await saveBillAndClear({
-              ...pendingInvoice,
-              payment_mode: mode,
-              status: status,
-          });
-          if (mode === "Cash" && cashDetails && cashDetails.change > 0) {
-              toast.info(`Return Change to customer: ₹${cashDetails.change}`, { duration: 5000 });
-          }
+    setShowPaymentModeModal(false);
+    if (mode === "UPI") {
+      setShowUpiModal(true);
+    } else {
+      await saveBillAndClear({
+        ...pendingInvoice,
+        payment_mode: mode,
+        status: status,
+      });
+      if (mode === "Cash" && cashDetails && cashDetails.change > 0) {
+        toast.info(`Return Change to customer: ₹${cashDetails.change}`, { duration: 5000 });
       }
+    }
   };
 
   const saveBillAndClear = async ({
-      invoiceNumber,
-      customerNameToSave,
-      customerInitials,
-      grandTotal,
-      payment_mode = "Cash",
-      status = "Paid",
+    invoiceNumber,
+    customerNameToSave,
+    customerInitials,
+    grandTotal,
+    payment_mode = "Cash",
+    status = "Paid",
   }: any) => {
-      const _now = new Date();
-      const billRecord = {
-          invoice: invoiceNumber,
-          customer: customerNameToSave,
-          amount: `₹${grandTotal}`,
-          time: new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }).format(_now),
-          created_at: _now.toISOString(),
-          status: status,
-          payment_mode: payment_mode,
-          initials: customerInitials,
-          tone: status === "Paid" ? "emerald" : "amber",
-          items: items,
-          shopkeeper_email: shopkeeper?.email,
-      };
+    const _now = new Date();
+    // Generate demo QGBI identifier
+    const bytes = new Uint8Array(12);
+    crypto.getRandomValues(bytes);
+    const demoQgbi = "QGBI-" + Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("").toUpperCase();
 
-      try {
-          const res = await axios.post(apiUrl("/api/bills/"), billRecord, { timeout: 3000 });
-          const savedBill = res.data?.invoice ? res.data : billRecord;
-          addStoreBill(savedBill, shopkeeper?.email);
-          toast.success(`Sale recorded via ${payment_mode}! Bill generated. Downloading PDF...`);
-          await downloadInvoicePdf(savedBill, shopkeeper);
-          handleClear();
-      } catch (err) {
-          console.warn("Backend offline, saving bill locally:", err);
-          const savedBill = addStoreBill(billRecord, shopkeeper?.email);
-          toast.success(`Sale recorded via ${payment_mode}! Bill generated. Downloading PDF...`);
-          await downloadInvoicePdf(savedBill, shopkeeper);
-          handleClear();
-      }
+    const billRecord = {
+      invoice: invoiceNumber,
+      customer: customerNameToSave,
+      amount: `₹${grandTotal}`,
+      time: new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }).format(_now),
+      created_at: _now.toISOString(),
+      status: status,
+      payment_mode: payment_mode,
+      initials: customerInitials,
+      tone: status === "Paid" ? "emerald" : "amber",
+      items: items,
+      shopkeeper_email: shopkeeper?.email,
+      qgbi: billingData?.qgbi || demoQgbi,
+    };
+
+    try {
+      const res = await axios.post(apiUrl("/api/bills/"), billRecord, { timeout: 3000 });
+      const savedBill = res.data?.invoice ? res.data : billRecord;
+      addStoreBill(savedBill, shopkeeper?.email);
+      toast.success(`Invoice ${invoiceNumber} finalized! Downloading PDF...`);
+      await downloadInvoicePdf(savedBill, shopkeeper);
+      handleClear();
+    } catch (err) {
+      console.warn("Backend offline, saving bill locally:", err);
+      const savedBill = addStoreBill(billRecord, shopkeeper?.email);
+      toast.success(`Invoice ${invoiceNumber} finalized locally! Downloading PDF...`);
+      await downloadInvoicePdf(savedBill, shopkeeper);
+      handleClear();
+    }
   };
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
-        <div className="flex flex-col items-center rounded-2xl sm:rounded-3xl border border-violet-100 bg-white p-4 sm:p-8 shadow-xl shadow-violet-100/40">
-            
-            <div className="mb-4 flex flex-col items-center text-center">
-                <div className="mb-3 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/30">
-                    <Sparkles className="h-7 w-7 sm:h-8 sm:w-8" />
-                </div>
-                <h2 className="font-display text-2xl sm:text-3xl font-black tracking-tight text-slate-900">Voice Billing</h2>
-                <p className="mt-1 text-xs sm:text-sm text-slate-500 max-w-md">
-                    Speak items naturally (e.g. "2 milk, 1 bread") to automatically build the bill.
-                </p>
-
-                {/* Language Switcher */}
-                <div className="mt-3.5 flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 p-1 text-[11px] font-semibold">
-                    <button
-                        type="button"
-                        onClick={() => setLang("en-IN")}
-                        className={`rounded-full px-2.5 py-1 transition ${lang === "en-IN" ? "bg-violet-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
-                    >
-                        🇮🇳 English
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setLang("hi-IN")}
-                        className={`rounded-full px-2.5 py-1 transition ${lang === "hi-IN" ? "bg-violet-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
-                    >
-                        🇮🇳 हिन्दी
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setLang("en-US")}
-                        className={`rounded-full px-2.5 py-1 transition ${lang === "en-US" ? "bg-violet-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
-                    >
-                        🇺🇸 US
-                    </button>
-                </div>
-            </div>
-
-            <div className="relative mb-5 flex flex-col items-center">
-                {isRecording ? (
-                    <button 
-                        onClick={stopRecording}
-                        className="group relative flex h-24 w-24 items-center justify-center rounded-full bg-rose-500 text-white shadow-2xl shadow-rose-500/50 transition hover:bg-rose-600 hover:scale-105 active:scale-95"
-                        title="Click to Stop Recording & Process Bill"
-                    >
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75"></span>
-                        <Square className="h-8 w-8 fill-current" />
-                    </button>
-                ) : (
-                    <button 
-                        onClick={startRecording}
-                        disabled={processing}
-                        className="group flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 via-indigo-600 to-purple-700 text-white shadow-2xl shadow-indigo-500/50 transition hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
-                        title="Click to Start Speaking"
-                    >
-                        {processing ? <Loader2 className="h-8 w-8 animate-spin" /> : <Mic2 className="h-10 w-10 transition group-hover:scale-110" />}
-                    </button>
-                )}
-
-                {/* Animated Waveform when listening */}
-                {isRecording && (
-                    <div className="flex items-center gap-1 mt-3 h-5">
-                        <span className="w-1.5 h-3 bg-violet-600 rounded-full animate-pulse [animation-delay:-0.3s]" />
-                        <span className="w-1.5 h-5 bg-violet-500 rounded-full animate-pulse [animation-delay:-0.15s]" />
-                        <span className="w-1.5 h-4 bg-fuchsia-500 rounded-full animate-pulse" />
-                        <span className="w-1.5 h-6 bg-indigo-500 rounded-full animate-pulse [animation-delay:-0.2s]" />
-                        <span className="w-1.5 h-3 bg-violet-400 rounded-full animate-pulse [animation-delay:-0.4s]" />
-                    </div>
-                )}
-                
-                <p className="mt-3 text-xs sm:text-sm font-semibold text-slate-600 text-center">
-                    {isRecording ? (
-                        <span className="flex items-center gap-2 text-rose-500 font-bold">
-                            <span className="h-2 w-2 rounded-full bg-rose-500 animate-ping"></span> Listening... Tap red button when done speaking
-                        </span>
-                    ) : processing ? (
-                        <span className="text-violet-600 flex items-center gap-2 font-medium">
-                            <Loader2 className="h-4 w-4 animate-spin" /> Identifying products &amp; matching catalog...
-                        </span>
-                    ) : (
-                        "Tap the microphone and speak products"
-                    )}
-                </p>
-
-                {/* Quick Voice Test Samples */}
-                <div className="mt-4 flex flex-wrap items-center justify-center gap-2 max-w-xl">
-                    <span className="text-xs font-medium text-slate-400">Quick Test:</span>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            const text = "2 packets of milk and 1 bread";
-                            setTranscript(text);
-                            processBillWithText(text);
-                        }}
-                        disabled={processing || isRecording}
-                        className="rounded-full border border-violet-200 bg-violet-50/70 px-3 py-1 text-xs font-semibold text-violet-700 transition hover:bg-violet-100 hover:border-violet-300 active:scale-95 disabled:opacity-50"
-                    >
-                        🥛 2 Milk &amp; 1 Bread
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            const text = "5 kg rice for 350 rs";
-                            setTranscript(text);
-                            processBillWithText(text);
-                        }}
-                        disabled={processing || isRecording}
-                        className="rounded-full border border-violet-200 bg-violet-50/70 px-3 py-1 text-xs font-semibold text-violet-700 transition hover:bg-violet-100 hover:border-violet-300 active:scale-95 disabled:opacity-50"
-                    >
-                        🍚 5 kg Rice (₹350)
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            const text = "3 soaps and 2 toothpastes";
-                            setTranscript(text);
-                            processBillWithText(text);
-                        }}
-                        disabled={processing || isRecording}
-                        className="rounded-full border border-violet-200 bg-violet-50/70 px-3 py-1 text-xs font-semibold text-violet-700 transition hover:bg-violet-100 hover:border-violet-300 active:scale-95 disabled:opacity-50"
-                    >
-                        🧼 3 Soaps &amp; 2 Toothpastes
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            const text = "1 Britannia Marie Gold Biscuit and 2 Amul Butter";
-                            setTranscript(text);
-                            processBillWithText(text);
-                        }}
-                        disabled={processing || isRecording}
-                        className="rounded-full border border-violet-200 bg-violet-50/70 px-3 py-1 text-xs font-semibold text-violet-700 transition hover:bg-violet-100 hover:border-violet-300 active:scale-95 disabled:opacity-50"
-                    >
-                        🍪 Biscuits &amp; Butter
-                    </button>
-                </div>
-            </div>
-
-            {error && (
-                <div className="mb-6 flex w-full max-w-2xl flex-col sm:flex-row items-center justify-between gap-3 rounded-xl bg-rose-50 p-4 text-sm font-medium text-rose-700 border border-rose-200">
-                    <div className="flex items-center gap-3">
-                        <AlertCircle className="h-5 w-5 shrink-0" />
-                        <p>{error}</p>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={async () => {
-                            const granted = await requestMicPermission();
-                            if (granted) {
-                                toast.success("Microphone permission granted!");
-                                startRecording();
-                            }
-                        }}
-                        className="shrink-0 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-rose-700"
-                    >
-                        Grant Permission
-                    </button>
-                </div>
-            )}
-
-            <div className="w-full max-w-2xl">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                    <div className="mb-2 flex items-center justify-between">
-                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Captured Voice / Manual Text</p>
-                        {transcript && (
-                            <button
-                                type="button"
-                                onClick={() => setTranscript("")}
-                                className="text-xs font-semibold text-slate-400 hover:text-slate-600"
-                            >
-                                Clear
-                            </button>
-                        )}
-                    </div>
-                    <div className="min-h-[80px] rounded-xl bg-white shadow-inner focus-within:ring-2 focus-within:ring-violet-200">
-                        <textarea
-                            value={transcript}
-                            onChange={(e) => setTranscript(e.target.value)}
-                            disabled={isRecording || processing}
-                            placeholder="Speak to see your text here, or type it manually... e.g. 2 packets of milk and 1 bread"
-                            className="w-full min-h-[90px] resize-y rounded-xl bg-transparent p-4 text-base font-medium text-slate-800 leading-relaxed outline-none disabled:bg-slate-50 disabled:text-slate-500 placeholder:text-slate-300 placeholder:italic"
-                        />
-                    </div>
-                </div>
-
-                {!isRecording && transcript.trim() && !processing && (
-                    <button 
-                        onClick={processBill}
-                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-3.5 text-sm font-bold text-white shadow-lg transition hover:bg-violet-600 active:scale-[0.98]"
-                    >
-                        <Sparkles className="h-4 w-4 text-violet-400" />
-                        Process Bill with AI ({transcript.trim().slice(0, 30)}{transcript.length > 30 ? "..." : ""})
-                    </button>
-                )}
-            </div>
+    <div className="relative text-[#f5f5f2] max-w-[1450px] mx-auto pb-8">
+      {/* Page Title */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-7">
+        <div>
+          <div className="eyebrow mb-3">01 / BILLING TERMINAL</div>
+          <h2 className="font-display font-black text-4xl sm:text-5xl uppercase tracking-tight text-white m-0">
+            VOICE TO <span className="text-[#ff7900]">INVOICE.</span>
+          </h2>
+          <p className="text-xs text-[#899087] mt-2 mb-0">
+            Speak your order naturally, review matched items, and approve the bill in real time.
+          </p>
         </div>
 
-        {items.length > 0 && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 rounded-3xl border border-emerald-100 bg-white p-4 sm:p-8 shadow-xl shadow-emerald-100/50">
-                <div className="mb-6 flex items-start justify-between">
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h3 className="font-display text-2xl font-bold text-slate-900">Generated Bill</h3>
-                            <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">
-                                <CheckCircle2 className="h-3.5 w-3.5" /> AI Processed Result
-                            </span>
-                        </div>
-                        <p className="mt-1 text-sm text-slate-500">Products and costs successfully extracted. You can edit quantities and prices.</p>
-                    </div>
-                    {billingData?.qgbi && (
-                        <div className="text-right">
-                            <p className="text-xs font-bold uppercase tracking-wider text-violet-500">Quantum Bill ID (QGBI)</p>
-                            <p className="mt-1 font-mono text-sm font-semibold text-slate-700 bg-violet-50 px-3 py-1.5 rounded-lg border border-violet-100">{billingData.qgbi}</p>
-                        </div>
-                    )}
-                </div>
+        {/* Language selector */}
+        <div className="flex items-center gap-1.5 p-1 rounded-lg border border-[#293329] bg-[#101610] text-[11px] font-bold">
+          <button
+            type="button"
+            onClick={() => setLang("en-IN")}
+            className={`px-3 py-1.5 rounded-md transition ${lang === "en-IN" ? "bg-[#ff7900] text-white" : "text-[#899087] hover:text-white"}`}
+          >
+            EN-IN
+          </button>
+          <button
+            type="button"
+            onClick={() => setLang("hi-IN")}
+            className={`px-3 py-1.5 rounded-md transition ${lang === "hi-IN" ? "bg-[#ff7900] text-white" : "text-[#899087] hover:text-white"}`}
+          >
+            HI-IN
+          </button>
+          <button
+            type="button"
+            onClick={() => setLang("en-US")}
+            className={`px-3 py-1.5 rounded-md transition ${lang === "en-US" ? "bg-[#ff7900] text-white" : "text-[#899087] hover:text-white"}`}
+          >
+            EN-US
+          </button>
+        </div>
+      </div>
 
-                {/* ── Mobile card list (< md) ── */}
-                <div className="md:hidden space-y-3 mb-6">
-                    {items.map((item: any, i: number) => (
-                        <div key={i} className={`rounded-2xl border p-4 ${item.matched_in_db === false ? 'border-amber-200 bg-amber-50/40' : 'border-slate-200 bg-slate-50/50'}`}>
-                            <div className="flex items-start justify-between gap-2 mb-3">
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-bold text-slate-800 leading-snug">{item.product}</p>
-                                    {item.matched_in_db === false && (
-                                        <span className="inline-flex items-center gap-1 mt-1 rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 uppercase">
-                                            <AlertCircle className="h-3 w-3" /> New
-                                        </span>
-                                    )}
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => { const next = items.filter((_, idx) => idx !== i); setItems(next); toast.info(`Removed ${item.product}`); }}
-                                    className="flex-shrink-0 rounded-xl p-2 text-slate-300 hover:bg-rose-50 hover:text-rose-600 active:scale-90 transition"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </button>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Quantity</p>
-                                    <div className="flex items-center gap-1">
-                                        <button type="button" onClick={() => handleItemChange(i, 'quantity', Math.max(1, (item.quantity || 1) - 1))} className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-base font-bold text-slate-700 active:scale-90 transition">-</button>
-                                        <input type="number" min="1" value={item.quantity || ''} onChange={(e) => handleItemChange(i, 'quantity', Math.max(1, parseInt(e.target.value) || 1))} className="w-12 rounded-xl border border-slate-200 bg-white py-1.5 text-center text-sm font-bold outline-none" />
-                                        <button type="button" onClick={() => handleItemChange(i, 'quantity', (item.quantity || 1) + 1)} className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-base font-bold text-slate-700 active:scale-90 transition">+</button>
-                                    </div>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Price (₹)</p>
-                                    <input type="number" min="0" value={item.unit_price || ''} onChange={(e) => handleItemChange(i, 'unit_price', parseInt(e.target.value) || 0)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-bold outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" />
-                                </div>
-                            </div>
-                            <div className="mt-3 flex justify-between items-center border-t border-slate-200 pt-3">
-                                <p className="text-xs text-slate-500 font-medium">Item Total</p>
-                                <p className="text-base font-black text-slate-900">₹{(item.quantity * item.unit_price) || 0}</p>
-                            </div>
-                        </div>
-                    ))}
-                    <div className="rounded-2xl bg-slate-900 p-4 flex justify-between items-center">
-                        <p className="text-sm font-bold uppercase tracking-wider text-white">Grand Total</p>
-                        <p className="text-xl font-black text-emerald-400">₹{calculateGrandTotal()}</p>
-                    </div>
-                </div>
-
-                {/* ── Desktop table (≥ md) ── */}
-                <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-200 mb-6">
-                    <table className="w-full min-w-[500px] text-left">
-                        <thead className="bg-slate-50 border-b border-slate-200">
-                            <tr>
-                                <th className="px-4 py-3.5 text-xs font-bold uppercase tracking-wider text-slate-500">Product</th>
-                                <th className="px-3 py-3.5 w-36 text-center text-xs font-bold uppercase tracking-wider text-slate-500">Qty</th>
-                                <th className="px-3 py-3.5 w-32 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Price (₹)</th>
-                                <th className="px-3 py-3.5 w-24 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Total (₹)</th>
-                                <th className="px-2 py-3.5 w-10 text-center"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {items.map((item: any, i: number) => (
-                                <tr key={i} className={`transition ${item.matched_in_db === false ? 'bg-amber-50/50 hover:bg-amber-50' : 'hover:bg-slate-50/50'}`}>
-                                    <td className="px-4 py-3.5 text-sm font-semibold text-slate-800">
-                                        <div className="flex items-center gap-2">
-                                            <span className="truncate max-w-[140px] sm:max-w-xs">{item.product}</span>
-                                            {item.matched_in_db === false && (
-                                                <span className="flex items-center gap-1 rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 uppercase shrink-0"><AlertCircle className="h-3 w-3" /> New</span>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="px-3 py-3.5">
-                                        <div className="flex items-center justify-center gap-1">
-                                            <button type="button" onClick={() => handleItemChange(i, 'quantity', Math.max(1, (item.quantity || 1) - 1))} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-base font-bold text-slate-700 active:scale-90 hover:bg-slate-200 transition">-</button>
-                                            <input type="number" min="1" value={item.quantity || ''} onChange={(e) => handleItemChange(i, 'quantity', Math.max(1, parseInt(e.target.value) || 1))} className="w-12 rounded-lg border border-slate-200 bg-white py-1 text-center text-sm font-bold outline-none" />
-                                            <button type="button" onClick={() => handleItemChange(i, 'quantity', (item.quantity || 1) + 1)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-base font-bold text-slate-700 active:scale-90 hover:bg-slate-200 transition">+</button>
-                                        </div>
-                                    </td>
-                                    <td className="px-3 py-3.5">
-                                        <input type="number" min="0" value={item.unit_price || ''} onChange={(e) => handleItemChange(i, 'unit_price', parseInt(e.target.value) || 0)} className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-right text-sm font-bold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
-                                    </td>
-                                    <td className="px-3 py-3.5 text-right text-sm font-bold text-slate-900">₹{(item.quantity * item.unit_price) || 0}</td>
-                                    <td className="px-2 py-3.5 text-center">
-                                        <button type="button" onClick={() => { const next = items.filter((_, idx) => idx !== i); setItems(next); toast.info(`Removed ${item.product}`); }} className="rounded-lg p-1 text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition"><Trash2 className="h-4 w-4" /></button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                        <tfoot className="bg-slate-900 text-white">
-                            <tr>
-                                <td colSpan={3} className="px-4 py-3.5 text-right text-xs font-bold uppercase tracking-wider">Grand Total</td>
-                                <td colSpan={2} className="px-4 py-3.5 text-right text-lg font-black text-emerald-400">₹{calculateGrandTotal()}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-
-                <div className="mb-6 rounded-2xl bg-slate-50 p-5">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Customer Name (Optional)</label>
-                    <input 
-                        type="text" 
-                        placeholder="Leave blank for Walk-in Customer" 
-                        value={billCustomerName} 
-                        onChange={(e) => setBillCustomerName(e.target.value)} 
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100/70" 
-                    />
-                </div>
-
-                {/* Action buttons — grid on mobile, single row on desktop */}
-                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5 md:flex md:justify-end md:gap-3">
-                    <button 
-                        onClick={handleClear}
-                        className="flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-3 text-xs sm:text-sm font-bold text-rose-600 shadow-sm transition hover:bg-rose-100 active:scale-[0.98]"
-                    >
-                        <Trash2 className="h-4 w-4" /> Clear
-                    </button>
-                    <button 
-                        onClick={() => setShowPreview(true)}
-                        className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-3 text-xs sm:text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-indigo-600 active:scale-[0.98]"
-                    >
-                        Preview
-                    </button>
-                    <button 
-                        onClick={() => {
-                            const grandTotal = calculateGrandTotal();
-                            if (grandTotal <= 0) {
-                                toast.error("Please add items/prices before downloading PDF.");
-                                return;
-                            }
-                            downloadInvoicePdf({
-                                invoice: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
-                                customer: billCustomerName.trim() || "Walk-in Customer",
-                                amount: `₹${grandTotal}`,
-                                items: items,
-                                payment_mode: "Cash",
-                                status: "Paid"
-                            }, shopkeeper);
-                        }}
-                        className="flex items-center justify-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-3 text-xs sm:text-sm font-bold text-indigo-700 shadow-sm transition hover:bg-indigo-100 active:scale-[0.98]"
-                    >
-                        <Download className="h-4 w-4 text-indigo-600" /> PDF
-                    </button>
-                    <button 
-                        onClick={sendToWhatsApp}
-                        className="flex items-center justify-center gap-1.5 rounded-xl bg-[#25D366] px-3 py-3 text-xs sm:text-sm font-bold text-white shadow-lg shadow-[#25D366]/30 transition hover:bg-[#20bd5a] active:scale-[0.98]"
-                    >
-                        <Send className="h-4 w-4" /> WhatsApp
-                    </button>
-                    <button 
-                        onClick={handleCompleteSale}
-                        className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 rounded-xl bg-violet-600 px-4 py-3 text-xs sm:text-sm font-bold text-white shadow-lg shadow-violet-600/30 transition hover:bg-violet-700 active:scale-[0.98]"
-                    >
-                        <CheckCircle2 className="h-4 w-4" /> Complete Sale
-                    </button>
-                </div>
+      {/* Main 2-Column Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* Left Column: Voice Terminal + Shortcuts */}
+        <div className="lg:col-span-7 space-y-5">
+          {/* Voice Command Center Panel */}
+          <div className="p-6 rounded-2xl border border-[#293329] bg-gradient-to-br from-[#131a13] to-[#0e130e] shadow-xl">
+            <div className="flex items-center justify-between gap-3 mb-6">
+              <div>
+                <h3 className="font-display font-bold text-lg text-white m-0 uppercase">Voice Command Center</h3>
+                <p className="text-[11px] text-[#899087] m-0 mt-1">Smart continuous speech recognition &amp; catalog resolver</p>
+              </div>
+              <span className="pill">VOICE MODE</span>
             </div>
-        )}
 
-        {showPreview && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-8 shadow-2xl animate-in zoom-in-95 duration-200">
-                    <button onClick={() => setShowPreview(false)} className="absolute right-4 top-4 rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600">✕</button>
-                    <div className="text-center mb-6">
-                        <h2 className="text-2xl font-black text-slate-900">QBill</h2>
-                        <p className="text-sm font-medium text-slate-500">Official Invoice</p>
-                    </div>
-                    <div className="mb-6 space-y-2 border-b border-dashed border-slate-200 pb-6 text-sm text-slate-600">
-                        {items.map((item, i) => (
-                            <div key={i} className="flex justify-between">
-                                <span>{item.quantity}x {item.product}</span>
-                                <span>₹{item.quantity * item.unit_price}</span>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="mb-8 flex justify-between text-lg font-black text-slate-900">
-                        <span>Grand Total</span>
-                        <span className="text-emerald-600">₹{calculateGrandTotal()}</span>
-                    </div>
-                    <div className="flex flex-col items-center justify-center space-y-3 rounded-2xl bg-slate-50 p-6">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Scan with GPay / PhonePe / Paytm</p>
-                        <div className="rounded-xl bg-white p-3 shadow-sm border border-slate-100">
-                            <QRCode value={`upi://pay?pa=${encodeURIComponent((shopkeeper as any)?.upi_id || "qbill@upi")}&pn=${encodeURIComponent(shopkeeper?.business_name || "QBill Store")}&am=${calculateGrandTotal()}&cu=INR`} size={120} level="M" />
-                        </div>
-                    </div>
-                    <div className="mt-6 grid grid-cols-2 gap-3">
-                        <button 
-                            onClick={() => {
-                                downloadInvoicePdf({
-                                    invoice: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
-                                    customer: billCustomerName.trim() || "Walk-in Customer",
-                                    amount: `₹${calculateGrandTotal()}`,
-                                    items: items,
-                                    payment_mode: "Cash",
-                                    status: "Paid"
-                                }, shopkeeper);
-                            }}
-                            className="flex items-center justify-center gap-2 rounded-xl border border-violet-200 bg-violet-50 py-3 text-xs font-bold text-violet-700 shadow transition hover:bg-violet-100 active:scale-[0.98]"
+            {/* Mic Stage */}
+            <div className="text-center py-4">
+              <div className="mic-wrap">
+                <div className="orb-ring"></div>
+                <div className="orb-ring r2"></div>
+                <button
+                  onClick={isRecording ? stopRecording : startRecording}
+                  disabled={processing}
+                  className={`mic ${isRecording ? "listening" : ""}`}
+                  aria-label={isRecording ? "Stop voice input" : "Start voice input"}
+                >
+                  {processing ? (
+                    <Loader2 className="w-8 h-8 animate-spin" />
+                  ) : isRecording ? (
+                    <Square className="w-8 h-8 fill-current text-white" />
+                  ) : (
+                    <Mic2 className="w-8 h-8 text-white" />
+                  )}
+                </button>
+              </div>
+
+              <h3 className="font-display font-bold text-xl text-white mt-4 mb-1">
+                {isRecording ? "Listening to your voice…" : processing ? "Matching products…" : "Ready to listen."}
+              </h3>
+              <p className="text-xs text-[#899087] max-w-sm mx-auto leading-relaxed mb-4">
+                {isRecording
+                  ? "Speak items naturally (e.g. '2 milk packets and 1 bread'). Tap mic when done."
+                  : "Tap the microphone or type below. Review the transcription before processing."}
+              </p>
+
+              {/* 35-bar equalizer visualizer */}
+              <div className={`wave ${isRecording ? "on" : ""}`}>
+                {Array.from({ length: 32 }, (_, i) => (
+                  <span key={i}></span>
+                ))}
+              </div>
+            </div>
+
+            {/* Error banner if mic access was blocked */}
+            {error && (
+              <div className="mt-4 p-3.5 rounded-lg border border-red-900/60 bg-red-950/40 text-red-200 text-xs flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+                  <span>{error}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={requestMicPermission}
+                  className="px-2.5 py-1 rounded bg-red-800 text-[11px] font-bold text-white uppercase shrink-0"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {/* Transcript Area */}
+            <div className="mt-5 p-4 rounded-xl border border-[#303b2e] bg-[#090e09]">
+              <label className="block text-[10px] font-bold uppercase tracking-[1.3px] text-[#899087] mb-2" htmlFor="transcript">
+                VOICE TRANSCRIPT / COMMAND
+              </label>
+              <textarea
+                id="transcript"
+                value={transcript}
+                onChange={(e) => setTranscript(e.target.value)}
+                placeholder="Example: Add two milk packets and one bread"
+                rows={3}
+                className="w-full bg-transparent border-0 outline-none text-xs sm:text-sm text-white placeholder-[#6e776a] resize-none leading-relaxed"
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3 mt-4">
+              <button
+                onClick={() => processBillWithText()}
+                disabled={processing || !transcript.trim()}
+                className="btn btn-orange flex-1 py-3 text-xs uppercase tracking-wider font-bold"
+              >
+                <Sparkles className="w-3.5 h-3.5" /> Match Products
+              </button>
+              <button
+                onClick={() => setTranscript("")}
+                className="btn btn-dark py-3 px-5 text-xs uppercase tracking-wider font-bold"
+              >
+                Clear
+              </button>
+            </div>
+
+            <div className="notice mt-4">
+              AI speech parsing supports bilingual commands, phonetic item matching, and multi-quantity detection.
+            </div>
+          </div>
+
+          {/* Quick-Add Product Shortcuts */}
+          <div className="p-6 rounded-2xl border border-[#293329] bg-[#101610]">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div>
+                <h3 className="font-display font-bold text-base text-white m-0 uppercase">Quick-add products</h3>
+                <p className="text-[11px] text-[#899087] m-0 mt-0.5">Instant catalog shortcuts to build your invoice</p>
+              </div>
+              <span className="text-[10px] font-bold text-[#899087] uppercase tracking-wider">Tap to add</span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {catalogItems.map((p) => (
+                <div
+                  key={p.id}
+                  onClick={() => addQuickProduct(p)}
+                  className="p-3 rounded-xl border border-[#293329] bg-[#111811] hover:border-[#ff7900]/60 hover:-translate-y-0.5 transition duration-200 cursor-pointer flex flex-col justify-between"
+                >
+                  <div className="h-12 w-full flex items-center justify-center rounded-lg bg-[#1c251a] text-2xl mb-2.5">
+                    {p.emoji}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-xs text-white truncate m-0">{p.name}</h4>
+                    <p className="text-[10px] text-[#899087] truncate m-0 mt-0.5">{p.detail}</p>
+                  </div>
+                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-[#293329]/60">
+                    <strong className="text-xs text-white">₹{p.price}</strong>
+                    <span className="w-6 h-6 rounded-md border border-[#ff7900]/40 bg-[#ff7900]/10 text-[#ff7900] flex items-center justify-center text-sm font-bold">
+                      +
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Live Checkout Cart & Cashier Approval */}
+        <div className="lg:col-span-5 space-y-5">
+          <div className="p-6 rounded-2xl border border-[#293329] bg-gradient-to-br from-[#131a13] to-[#0e130e] shadow-xl sticky top-24">
+            {/* Cart Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-[#293329]">
+              <div>
+                <div className="eyebrow text-[9px] py-1 px-2.5 mb-1.5">LIVE CHECKOUT</div>
+                <h3 className="font-display font-bold text-2xl text-white m-0 uppercase">Current Invoice</h3>
+              </div>
+              <span className="pill text-[10px] px-3 py-1.5">
+                {String(totalItemCount()).padStart(2, "0")} ITEMS
+              </span>
+            </div>
+
+            {/* Reference Badge */}
+            <div className="flex items-center justify-between p-3 my-4 rounded-lg border border-dashed border-[#3a4536] bg-[#0c120c] text-xs">
+              <span className="text-[#899087] uppercase tracking-wider text-[10px]">DRAFT REFERENCE</span>
+              <strong className="font-mono text-white text-xs">SQB-DRAFT-{String(draftNumber).padStart(3, "0")}</strong>
+            </div>
+
+            {/* Customer Name Input */}
+            <div className="mb-4">
+              <label className="block text-[10px] font-bold uppercase tracking-[1px] text-[#899087] mb-1.5">
+                Customer Name (Optional)
+              </label>
+              <input
+                type="text"
+                placeholder="Walk-in Customer"
+                value={billCustomerName}
+                onChange={(e) => setBillCustomerName(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-lg border border-[#293329] bg-[#0c110c] text-xs text-white placeholder-[#60675f] outline-none focus:border-[#ff7900]"
+              />
+            </div>
+
+            {/* Items List */}
+            <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+              {items.length === 0 ? (
+                <div className="py-12 text-center text-[#899087] border border-dashed border-[#293329] rounded-xl my-2">
+                  <div className="text-3xl mb-2 text-[#ff7900]/40">◈</div>
+                  <p className="text-xs m-0">Your invoice starts here.<br />Speak a command or tap quick-add products.</p>
+                </div>
+              ) : (
+                items.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3 rounded-xl border border-[#242e22] bg-[#0e140e] flex items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-xs text-white truncate">{item.product}</div>
+                      <div className="text-[10px] text-[#899087] mt-0.5">₹{item.unit_price} per unit</div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => handleItemChange(idx, "quantity", Math.max(1, (item.quantity || 1) - 1))}
+                          className="w-6 h-6 rounded border border-[#374233] bg-[#192119] text-white flex items-center justify-center text-xs font-bold hover:bg-[#253225]"
                         >
-                            <Download className="h-4 w-4" /> Download PDF
+                          <Minus className="w-3 h-3" />
                         </button>
-                        <button onClick={() => setShowPreview(false)} className="rounded-xl bg-slate-900 py-3 text-xs font-bold text-white shadow-lg transition hover:bg-slate-800 active:scale-[0.98]">Close Preview</button>
+                        <span className="font-bold text-xs text-white min-w-[20px] text-center">
+                          {item.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleItemChange(idx, "quantity", (item.quantity || 1) + 1)}
+                          className="w-6 h-6 rounded border border-[#374233] bg-[#192119] text-white flex items-center justify-center text-xs font-bold hover:bg-[#253225]"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
-                </div>
+
+                    <div className="text-right shrink-0">
+                      <div className="font-bold text-xs text-white">
+                        ₹{(item.quantity * item.unit_price).toFixed(2)}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeItem(idx)}
+                        className="text-[10px] text-[#ff9a7b] hover:text-red-400 mt-2 block ml-auto"
+                      >
+                        Remove ×
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
-        )}
 
-        <WhatsAppModal
-            isOpen={showWhatsAppModal}
-            onClose={() => setShowWhatsAppModal(false)}
-            items={items}
-            grandTotal={calculateGrandTotal()}
-            initialCustomerName={billCustomerName}
-            shopkeeper={shopkeeper}
-        />
+            {/* Totals Breakdown */}
+            <div className="mt-5 pt-4 border-t border-[#293329] space-y-2 text-xs">
+              <div className="flex justify-between text-[#899087]">
+                <span>Subtotal</span>
+                <strong className="text-white">₹{calculateSubtotal().toFixed(2)}</strong>
+              </div>
+              <div className="flex justify-between text-[#899087]">
+                <span>Illustrative GST · 5%</span>
+                <strong className="text-white">₹{calculateTax().toFixed(2)}</strong>
+              </div>
+              <div className="flex justify-between items-baseline pt-3 border-t border-[#293329]">
+                <span className="font-bold text-sm text-white uppercase tracking-wider">Total payable</span>
+                <strong className="font-display font-black text-3xl text-[#ff7900]">
+                  ₹{calculateGrandTotal().toFixed(2)}
+                </strong>
+              </div>
+            </div>
 
-        {/* Payment Mode Selection Modal */}
-        {showPaymentModeModal && pendingInvoice && (
-            <PaymentModeModal
-                amount={pendingInvoice.grandTotal}
-                invoiceNumber={pendingInvoice.invoiceNumber}
-                customerName={pendingInvoice.customerNameToSave}
-                storeName={shopkeeper?.business_name || shopkeeper?.store_name || "SmartQ Store"}
-                upiId={(shopkeeper as any)?.upi_id}
-                onClose={() => setShowPaymentModeModal(false)}
-                onSelectPaymentMode={handlePaymentModeSelected}
-            />
-        )}
+            {/* Cashier Approval Gate */}
+            <div className="confirm">
+              <b className="text-[#ffbd75] text-xs flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-[#ff7900]" /> Cashier approval
+              </b>
+              <p className="text-[10px] text-[#899087] m-0 mt-1.5 leading-relaxed">
+                Verify each product, quantity, unit price, and final tax before finalizing the invoice.
+              </p>
+            </div>
 
-        {/* UPI Payment Modal */}
-        {showUpiModal && pendingInvoice && (
-            <UpiPaymentModal
-                amount={pendingInvoice.grandTotal}
-                storeName={shopkeeper?.business_name || shopkeeper?.store_name || "Store"}
-                upiId={(shopkeeper as any)?.upi_id || ""}
-                invoiceNumber={pendingInvoice.invoiceNumber}
-                customerName={pendingInvoice.customerNameToSave}
-                onClose={() => setShowUpiModal(false)}
-                onPaymentConfirmed={async () => {
-                    setShowUpiModal(false);
-                    await saveBillAndClear({
-                        ...pendingInvoice,
-                        payment_mode: "UPI",
-                        status: "Paid",
-                    });
+            <label className="flex items-start gap-2.5 my-3 cursor-pointer text-xs text-[#a6ad9f]">
+              <input
+                type="checkbox"
+                checked={approved}
+                onChange={(e) => setApproved(e.target.checked)}
+                className="mt-0.5 accent-[#ff7900] w-4 h-4 rounded cursor-pointer"
+              />
+              <span className="leading-tight">I have reviewed and approved the current invoice items and total.</span>
+            </label>
+
+            {/* Action Buttons */}
+            <div className="space-y-2.5 mt-4">
+              <button
+                onClick={handleCompleteSale}
+                disabled={items.length === 0 || !approved}
+                className="btn btn-orange w-full py-3.5 text-xs font-bold uppercase tracking-wider rounded-xl shadow-lg shadow-[#ff7900]/20"
+              >
+                Finalize invoice ↗
+              </button>
+
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  disabled={items.length === 0}
+                  className="btn btn-dark py-2.5 text-[11px] font-bold uppercase"
+                >
+                  Clear Draft
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPreview(true)}
+                  disabled={items.length === 0}
+                  className="btn btn-dark py-2.5 text-[11px] font-bold uppercase"
+                >
+                  Preview
+                </button>
+                <button
+                  type="button"
+                  onClick={sendToWhatsApp}
+                  disabled={items.length === 0}
+                  className="btn py-2.5 text-[11px] font-bold uppercase bg-[#1a2f1c] border-[#25d366]/40 text-[#25d366] hover:bg-[#25d366]/20"
+                >
+                  WhatsApp
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Invoice Quick Receipt Preview Modal */}
+      {showPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <div className="relative w-full max-w-md rounded-2xl border border-[#ff7900]/40 bg-[#101610] p-6 text-white shadow-2xl animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setShowPreview(false)}
+              className="absolute right-4 top-4 p-2 text-[#899087] hover:text-white rounded-lg hover:bg-[#1b241b]"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="font-display font-black text-2xl tracking-wider text-white">
+                <span className="text-[#ff7900]">SMART</span>Q-BILL
+              </div>
+              <p className="text-[11px] text-[#899087] uppercase tracking-wider mt-1">
+                Official Checkout Receipt Preview
+              </p>
+            </div>
+
+            <div className="mb-4 space-y-2 border-b border-dashed border-[#293329] pb-4 text-xs text-[#b8beb4]">
+              {items.map((item, i) => (
+                <div key={i} className="flex justify-between">
+                  <span>{item.quantity}x {item.product}</span>
+                  <span className="font-bold text-white">₹{(item.quantity * item.unit_price).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-1 mb-6 text-xs text-[#899087]">
+              <div className="flex justify-between">
+                <span>Subtotal:</span>
+                <span className="text-white">₹{calculateSubtotal().toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>GST (5%):</span>
+                <span className="text-white">₹{calculateTax().toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-base font-bold text-white pt-2 border-t border-[#293329]">
+                <span>Total Payable:</span>
+                <span className="text-[#ff7900] font-display font-black text-2xl">
+                  ₹{calculateGrandTotal().toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-center justify-center p-4 rounded-xl border border-[#293329] bg-[#0c120c] mb-6">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#ff7900] mb-2.5">
+                UPI Instant Checkout QR
+              </p>
+              <div className="p-3 bg-white rounded-xl shadow-lg">
+                <QRCode
+                  value={`upi://pay?pa=${encodeURIComponent((shopkeeper as any)?.upi_id || "smartq@upi")}&pn=${encodeURIComponent(shopkeeper?.store_name || "SmartQ Store")}&am=${calculateGrandTotal()}&cu=INR`}
+                  size={120}
+                  level="M"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => {
+                  downloadInvoicePdf({
+                    invoice: `SQB-${Math.floor(1000 + Math.random() * 9000)}`,
+                    customer: billCustomerName.trim() || "Walk-in Customer",
+                    amount: `₹${calculateGrandTotal().toFixed(2)}`,
+                    items: items,
+                    payment_mode: "Cash",
+                    status: "Paid",
+                  }, shopkeeper);
                 }}
-            />
-        )}
+                className="btn btn-outline py-3 text-xs uppercase font-bold"
+              >
+                <Download className="w-3.5 h-3.5" /> Download PDF
+              </button>
+              <button
+                onClick={() => setShowPreview(false)}
+                className="btn btn-orange py-3 text-xs uppercase font-bold"
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WhatsApp Modal */}
+      <WhatsAppModal
+        isOpen={showWhatsAppModal}
+        onClose={() => setShowWhatsAppModal(false)}
+        items={items}
+        grandTotal={calculateGrandTotal()}
+        initialCustomerName={billCustomerName}
+        shopkeeper={shopkeeper}
+      />
+
+      {/* Payment Mode Selection Modal */}
+      {showPaymentModeModal && pendingInvoice && (
+        <PaymentModeModal
+          amount={pendingInvoice.grandTotal}
+          invoiceNumber={pendingInvoice.invoiceNumber}
+          customerName={pendingInvoice.customerNameToSave}
+          storeName={shopkeeper?.business_name || shopkeeper?.store_name || "SmartQ Store"}
+          upiId={(shopkeeper as any)?.upi_id}
+          onClose={() => setShowPaymentModeModal(false)}
+          onSelectPaymentMode={handlePaymentModeSelected}
+        />
+      )}
+
+      {/* UPI Payment Modal */}
+      {showUpiModal && pendingInvoice && (
+        <UpiPaymentModal
+          amount={pendingInvoice.grandTotal}
+          storeName={shopkeeper?.business_name || shopkeeper?.store_name || "SmartQ Store"}
+          upiId={(shopkeeper as any)?.upi_id || ""}
+          invoiceNumber={pendingInvoice.invoiceNumber}
+          customerName={pendingInvoice.customerNameToSave}
+          onClose={() => setShowUpiModal(false)}
+          onPaymentConfirmed={async () => {
+            setShowUpiModal(false);
+            await saveBillAndClear({
+              ...pendingInvoice,
+              payment_mode: "UPI",
+              status: "Paid",
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

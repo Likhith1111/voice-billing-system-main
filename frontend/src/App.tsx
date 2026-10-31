@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch, Redirect } from "wouter";
+import { Route, Switch, Redirect, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useState, createContext, useContext } from "react";
@@ -11,6 +11,7 @@ import Home from "./pages/Home";
 import Register from "./pages/Register";
 import AdminPanel from "./pages/AdminPanel";
 import InstallAppBanner from "./components/InstallAppBanner";
+import LandingView from "./components/LandingView";
 
 // --- Auth Context ---
 interface AuthContextType {
@@ -31,11 +32,20 @@ export const useAuth = () => useContext(AuthContext);
 
 function Router() {
   const { isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
   
   return (
     <Switch>
       <Route path="/">
-        {isAuthenticated ? <Home /> : <Login />}
+        {isAuthenticated ? (
+          <Home />
+        ) : (
+          <LandingView
+            onOpenBilling={() => setLocation("/login")}
+            onOpenLogin={() => setLocation("/login")}
+            isAuthenticated={false}
+          />
+        )}
       </Route>
       <Route path="/login">
         {isAuthenticated ? <Redirect to="/" /> : <Login />}
