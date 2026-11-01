@@ -14,6 +14,7 @@ import {
   EyeOff,
   Sparkles,
   Loader2,
+  Paperclip,
 } from "lucide-react";
 import { toast } from "sonner";
 import { apiUrl } from "../config/api";
@@ -260,6 +261,19 @@ export default function WhatsAppModal({
               <span>•</span>
               <span>{items.length} item{items.length !== 1 ? "s" : ""}</span>
             </div>
+          </div>
+        </div>
+
+        {/* How to attach PDF note */}
+        <div className="mb-3.5 rounded-xl border border-indigo-100 bg-indigo-50/70 p-3 text-xs text-indigo-950 flex items-start gap-2.5">
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white mt-0.5">
+            <Paperclip className="h-3.5 w-3.5" />
+          </div>
+          <div className="text-[11px] leading-relaxed">
+            <p className="font-bold text-indigo-900">PDF File Ready in Downloads</p>
+            <p className="text-slate-600">
+              When WhatsApp opens, click the <strong className="text-slate-900">📎 Paperclip icon</strong> to attach the downloaded PDF, or press <strong className="text-slate-900">Ctrl + V</strong> to paste the receipt!
+            </p>
           </div>
         </div>
 

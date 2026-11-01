@@ -143,7 +143,6 @@ export function buildInvoiceMessage({
     message += `UPI ID: *${upiId}*\n`;
   }
 
-  message += `\n📄 *Official bill PDF receipt attached.*`;
   message += `\nThank you for shopping with us! 🙏`;
 
   return message;
