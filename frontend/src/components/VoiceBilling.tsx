@@ -82,14 +82,34 @@ export default function VoiceBilling() {
     };
   }, []);
 
-  const startRecording = () => {
+  const requestMicPermission = async () => {
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track) => track.stop());
+        await new Promise((r) => setTimeout(r, 150));
+      }
+      setError("");
+      return true;
+    } catch (err: any) {
+      console.warn("Microphone permission check:", err);
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        setError("Microphone permission was denied. Please allow microphone access in your browser settings.");
+        return false;
+      }
+      return true;
+    }
+  };
+
+  const startRecording = async () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      const msg = "Speech Recognition is not supported by your current browser. Please open in Google Chrome or Microsoft Edge.";
-      setError(msg);
-      toast.error(msg);
+      setError("Your browser does not support Speech Recognition. Please use Google Chrome or Microsoft Edge.");
       return;
     }
+
+    const hasPerm = await requestMicPermission();
+    if (!hasPerm) return;
 
     if (recognitionRef.current) {
       try {
@@ -97,99 +117,76 @@ export default function VoiceBilling() {
       } catch (e) {}
     }
 
-    try {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = lang;
-      recognition.maxAlternatives = 1;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = lang;
+    recognition.maxAlternatives = 1;
 
-      recognition.onstart = () => {
-        setIsRecording(true);
-        isRecordingRef.current = true;
-        setError("");
-        toast.info("Listening... Speak your order (e.g. '2 milk and 1 bread')", { id: "mic-status" });
-      };
+    recognition.onstart = () => {
+      setIsRecording(true);
+      isRecordingRef.current = true;
+      setError("");
+    };
 
-      recognition.onresult = (event: any) => {
-        let interim = "";
-        let final = "";
-
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const itemText = event.results[i][0]?.transcript || "";
-          if (event.results[i].isFinal) {
-            final += itemText + " ";
-          } else {
-            interim += itemText;
-          }
+    recognition.onresult = (event: any) => {
+      let newFinals = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          const text = event.results[i][0].transcript.trim();
+          if (text) newFinals += text + " ";
         }
+      }
 
-        if (final) {
-          accumulatedTranscriptRef.current += final;
-        }
+      if (newFinals) {
+        accumulatedTranscriptRef.current += newFinals;
+        setTranscript(accumulatedTranscriptRef.current.trim());
+      }
+    };
 
-        const liveText = (accumulatedTranscriptRef.current + " " + interim).trim();
-        if (liveText) {
-          setTranscript(liveText);
-        }
-      };
-
-      recognition.onerror = (event: any) => {
-        console.warn("Speech recognition notice:", event.error);
-        if (event.error === "no-speech") {
-          return; // Still waiting for user to speak
-        }
-
+    recognition.onerror = (event: any) => {
+      console.warn("Speech recognition notice:", event.error);
+      if (event.error === "no-speech") return;
+      if (event.error === "not-allowed") {
+        setError("Microphone access was denied. Please click the permissions icon in your browser URL bar.");
         setIsRecording(false);
         isRecordingRef.current = false;
-        toast.dismiss("mic-status");
+        return;
+      }
+      if (event.error === "network") {
+        setError("Speech network connection issue. You can still type items or click quick products below.");
+        setIsRecording(false);
+        isRecordingRef.current = false;
+        return;
+      }
+    };
 
-        if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-          const err = "Microphone access was denied. Please click the microphone/lock icon in your browser's address bar to allow access.";
-          setError(err);
-          toast.error("Microphone permission denied. Allow it in your browser address bar.");
-        } else if (event.error === "audio-capture") {
-          const err = "No microphone was found or audio capture failed. Ensure your microphone is connected and not in use by another app.";
-          setError(err);
-          toast.error("No microphone detected. Check your audio device.");
-        } else if (event.error === "network") {
-          const err = "Speech recognition network error. Google Speech Recognition requires an active internet connection.";
-          setError(err);
-          toast.error("Speech service network error. Check your internet connection.");
-        } else if (event.error !== "aborted") {
-          setError(`Speech recognition error: ${event.error}`);
-        }
-      };
+    recognition.onend = () => {
+      if (!isManuallyStoppedRef.current && isRecordingRef.current) {
+        try {
+          recognition.start();
+        } catch (e) {}
+      } else {
+        setIsRecording(false);
+        isRecordingRef.current = false;
+      }
+    };
 
-      recognition.onend = () => {
-        if (!isManuallyStoppedRef.current && isRecordingRef.current) {
-          try {
-            recognition.start();
-          } catch (e) {
-            setIsRecording(false);
-            isRecordingRef.current = false;
-          }
-        } else {
-          setIsRecording(false);
-          isRecordingRef.current = false;
-        }
-      };
+    recognitionRef.current = recognition;
+    isManuallyStoppedRef.current = false;
+    isRecordingRef.current = true;
+    setTranscript("");
+    accumulatedTranscriptRef.current = "";
+    setError("");
 
-      recognitionRef.current = recognition;
-      isManuallyStoppedRef.current = false;
-      isRecordingRef.current = true;
-      setTranscript("");
-      accumulatedTranscriptRef.current = "";
-      setError("");
-
+    try {
       recognition.start();
     } catch (err: any) {
       console.error("Failed to start speech recognition:", err);
-      setIsRecording(false);
-      isRecordingRef.current = false;
-      const msg = err?.message || "Could not start speech recognition. Check browser permissions.";
-      setError(msg);
-      toast.error(msg);
+      try {
+        recognition.abort();
+        setTimeout(() => recognition.start(), 200);
+      } catch (e) {}
     }
   };
 
@@ -197,7 +194,6 @@ export default function VoiceBilling() {
     isManuallyStoppedRef.current = true;
     isRecordingRef.current = false;
     setIsRecording(false);
-    toast.dismiss("mic-status");
 
     if (recognitionRef.current) {
       try {
@@ -210,7 +206,7 @@ export default function VoiceBilling() {
       if (captured) {
         processBillWithText(captured);
       }
-    }, 300);
+    }, 350);
   };
 
   const processBillWithText = async (customText?: string) => {
@@ -511,22 +507,13 @@ export default function VoiceBilling() {
             {/* Mic Stage */}
             <div className="text-center py-4">
               <div className="mic-wrap">
-                <div className="orb-ring" />
-                <div className="orb-ring r2" />
+                <div className="orb-ring"></div>
+                <div className="orb-ring r2"></div>
                 <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (isRecording) {
-                      stopRecording();
-                    } else {
-                      startRecording();
-                    }
-                  }}
+                  onClick={isRecording ? stopRecording : startRecording}
                   disabled={processing}
                   className={`mic ${isRecording ? "listening" : ""}`}
                   aria-label={isRecording ? "Stop voice input" : "Start voice input"}
-                  title={isRecording ? "Click to stop and match items" : "Click to speak your order"}
                 >
                   {processing ? (
                     <Loader2 className="w-8 h-8 animate-spin" />
@@ -564,7 +551,7 @@ export default function VoiceBilling() {
                 </div>
                 <button
                   type="button"
-                  onClick={startRecording}
+                  onClick={requestMicPermission}
                   className="px-2.5 py-1 rounded bg-red-800 text-[11px] font-bold text-white uppercase shrink-0"
                 >
                   Retry

@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { useAuth } from "../App";
 import { apiUrl } from "../config/api";
 import { registerShopkeeperOffline } from "../lib/offlineStore";
-import { Store, Loader2, Sparkles } from "lucide-react";
 
 export default function Register() {
   const [, setLocation] = useLocation();
@@ -25,16 +24,12 @@ export default function Register() {
     const cleanStore = storeName.trim();
 
     try {
-      const response = await axios.post(
-        apiUrl("/api/register/"),
-        {
-          name: cleanName,
-          email: cleanEmail,
-          password: cleanPassword,
-          store_name: cleanStore,
-        },
-        { timeout: 3500 }
-      );
+      const response = await axios.post(apiUrl("/api/register/"), {
+        name: cleanName,
+        email: cleanEmail,
+        password: cleanPassword,
+        store_name: cleanStore,
+      }, { timeout: 3500 });
 
       if (response.data.success) {
         const offlineResult = registerShopkeeperOffline({
@@ -48,7 +43,7 @@ export default function Register() {
           name: cleanName,
           email: cleanEmail,
           store_name: cleanStore,
-          phone: "",
+          phone: "9876543210",
         };
         login(shopData);
         toast.success(`Welcome to QBill, ${cleanName}! Your store is ready.`);
@@ -61,6 +56,7 @@ export default function Register() {
         setLoading(false);
         return;
       }
+      // If backend server is unreachable (cloud/mobile offline mode), register locally
       const res = registerShopkeeperOffline({
         name: cleanName,
         email: cleanEmail,
@@ -82,119 +78,108 @@ export default function Register() {
   };
 
   return (
-    <div className="auth-page">
-      {/* Background ambient grid */}
-      <div className="grid-bg" />
+    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Dynamic Background Elements */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-[128px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-[128px] pointer-events-none" />
 
-      {/* Registration Card */}
-      <div className="auth-card" style={{ maxWidth: 460 }}>
-        {/* Brand Header */}
-        <div className="text-center mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#ff7900] to-[#d75b00] flex items-center justify-center mx-auto mb-4 shadow-xl shadow-[#ff7900]/25 border border-[#ffba76]/30">
-            <Store className="w-7 h-7 text-white" />
+      {/* Register Card */}
+      <div className="w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl relative z-10 transition-transform hover:scale-[1.01] duration-500 my-8">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-2xl mx-auto flex items-center justify-center mb-6 shadow-lg shadow-indigo-500/30">
+            <svg
+              className="w-8 h-8 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+              />
+            </svg>
           </div>
-          <div className="font-display font-black text-2xl tracking-wider text-white mb-1">
-            <span className="text-[#ff7900]">SMART</span>Q-BILL
-          </div>
-          <p className="text-[11px] text-[#899087] uppercase tracking-[1.5px] m-0">
-            Register Your Store Account
-          </p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent mb-2">
+            Create Account
+          </h1>
+          <p className="text-gray-400">Register your shopkeeper profile</p>
         </div>
 
-        <div className="flex justify-center mb-6">
-          <div className="eyebrow text-[10px] py-1.5 px-3.5">
-            <Sparkles className="w-3 h-3 inline text-[#ff7900]" /> New Merchant Onboarding
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-3.5">
-          <div>
-            <label className="label-sm" htmlFor="reg-name">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-300 ml-1">
               Full Name
             </label>
             <input
-              id="reg-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="input-dark"
-              placeholder="e.g. Rajesh Kumar"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent transition-all duration-300"
+              placeholder="Rajesh Kumar"
               required
-              autoComplete="name"
             />
           </div>
 
-          <div>
-            <label className="label-sm" htmlFor="reg-email">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-300 ml-1">
               Email Address
             </label>
             <input
-              id="reg-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="input-dark"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent transition-all duration-300"
               placeholder="shopkeeper@example.com"
               required
-              autoComplete="email"
             />
           </div>
 
-          <div>
-            <label className="label-sm" htmlFor="reg-store">
-              Store / Business Name
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-300 ml-1">
+              Store Name
             </label>
             <input
-              id="reg-store"
               type="text"
               value={storeName}
               onChange={(e) => setStoreName(e.target.value)}
-              className="input-dark"
-              placeholder="e.g. GreenBasket Supermarket"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent transition-all duration-300"
+              placeholder="GreenBasket Store"
               required
             />
           </div>
 
-          <div>
-            <label className="label-sm" htmlFor="reg-password">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-300 ml-1">
               Password
             </label>
             <input
-              id="reg-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="input-dark"
-              placeholder="Create a secure password"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent transition-all duration-300"
+              placeholder="••••••••"
               required
-              autoComplete="new-password"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="btn btn-orange w-full py-3.5 text-xs uppercase tracking-wider font-bold rounded-xl mt-3 shadow-lg shadow-[#ff7900]/25"
+            className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium rounded-xl px-4 py-3 shadow-lg shadow-indigo-500/25 transform hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50 mt-4"
           >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Registering store...
-              </span>
-            ) : (
-              "Complete Setup & Launch →"
-            )}
+            {loading ? "Creating Account..." : "Register"}
           </button>
         </form>
 
-        <div className="mt-6 pt-5 border-t border-[#293329] text-center">
-          <p className="text-xs text-[#899087] m-0">
-            Already have a store account?{" "}
-            <Link href="/login" className="text-[#ff7900] hover:text-[#ff9d42] transition-colors font-bold">
-              Sign in here
-            </Link>
-          </p>
-        </div>
+        <p className="text-center text-sm text-gray-400 mt-8">
+          Already have an account?{" "}
+          <Link href="/login" className="text-indigo-400 hover:text-indigo-300 transition-colors font-medium">
+            Sign In
+          </Link>
+        </p>
       </div>
     </div>
   );
