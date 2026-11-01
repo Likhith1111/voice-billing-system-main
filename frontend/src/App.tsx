@@ -99,7 +99,7 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider
-        defaultTheme="light"
+        defaultTheme="dark"
       >
         <AuthContext.Provider value={{ isAuthenticated, login, logout, shopkeeper }}>
           <TooltipProvider>

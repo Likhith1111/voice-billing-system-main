@@ -547,8 +547,8 @@ Respond strictly in valid JSON format like this, and nothing else:
   "grand_total": 120
 }}
 """
-                # Model cascade: Try active models first to avoid 429 quota limits or 503 high demand spikes
-                candidate_models = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-2.5-flash', 'gemini-flash-latest']
+                # Model cascade: Try valid models to avoid 429 quota limits or 503 high demand spikes
+                candidate_models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-2.5-flash-preview-05-20', 'gemini-1.5-pro']
                 response = None
 
                 for model_name in candidate_models:
@@ -698,7 +698,7 @@ Do not include any markdown formatting like ```json or any explanations. Just ou
                 image_bytes = base64.b64decode(image_data)
                 image_obj = PIL.Image.open(BytesIO(image_bytes))
 
-                candidate_models = ['gemini-flash-lite-latest', 'gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-flash-latest']
+                candidate_models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-2.5-flash-preview-05-20', 'gemini-1.5-pro']
                 response = None
                 last_error = ""
 
@@ -885,7 +885,7 @@ Return ONLY the digits of the barcode with no spaces, dashes, or words.
 For example, if you see 8 901803 000568, return 8901803000568.
 If no barcode or digits are visible, reply: NOT_FOUND
 """
-                candidate_models = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-1.5-flash']
+                candidate_models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b']
                 for model_name in candidate_models:
                     try:
                         response = client.models.generate_content(
