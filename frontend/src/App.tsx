@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Register from "./pages/Register";
 import AdminPanel from "./pages/AdminPanel";
+import PublicInvoiceView from "./pages/PublicInvoiceView";
 import InstallAppBanner from "./components/InstallAppBanner";
 
 // --- Auth Context ---
@@ -45,6 +46,9 @@ function Router() {
       </Route>
       <Route path="/admin">
         <AdminPanel />
+      </Route>
+      <Route path="/invoice/:invoiceId">
+        {(params) => <PublicInvoiceView invoiceId={params.invoiceId} />}
       </Route>
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}

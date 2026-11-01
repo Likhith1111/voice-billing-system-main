@@ -143,7 +143,7 @@ export default function WhatsAppModal({
     };
   };
 
-  const handleSendWithPdf = async (forceWeb: boolean = false) => {
+  const handleSendWithPdf = async (forceWeb: boolean = false, useSystemShareSheet: boolean = false) => {
     const rawPhone = getTargetPhone();
     const validation = validatePhoneNumber(rawPhone);
 
@@ -183,6 +183,7 @@ export default function WhatsAppModal({
         shopkeeper,
         phone: validation.formattedPhone,
         forceWeb,
+        useSystemShareSheet,
       });
       onClose();
     } catch (err) {
@@ -254,17 +255,17 @@ export default function WhatsAppModal({
           </div>
         </div>
 
-        {/* PDF + Typing Message Info Card */}
+        {/* Direct WhatsApp Info Card */}
         <div className="mb-4 rounded-xl border border-emerald-100 bg-emerald-50/70 p-3 text-xs text-emerald-900 flex items-center gap-2.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
-            <FileText className="h-4 w-4" />
+            <Send className="h-4 w-4" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-bold text-[11px] uppercase tracking-wide text-emerald-800">
-              PDF & Typing Message Ready
+              Direct Customer WhatsApp
             </p>
             <p className="text-[11px] text-emerald-700 leading-tight">
-              Sends receipt PDF with itemized products, quantities, prices & UPI link.
+              Opens directly into the customer's WhatsApp chat with the typed bill breakdown & online PDF link.
             </p>
           </div>
         </div>
@@ -362,24 +363,36 @@ export default function WhatsAppModal({
           </div>
         </div>
 
-        {/* Primary Action Button: Send PDF & Message */}
+        {/* Primary Action Button: Direct to WhatsApp */}
         <button
           type="button"
-          onClick={() => handleSendWithPdf(false)}
+          onClick={() => handleSendWithPdf(false, false)}
           disabled={isSharing}
           className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] py-3.5 text-sm font-black text-white shadow-lg shadow-[#25D366]/30 transition hover:bg-[#20bd5a] active:scale-[0.98] disabled:opacity-60"
         >
           {isSharing ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Preparing & Launching WhatsApp...
+              Opening Customer WhatsApp...
             </>
           ) : (
             <>
               <Send className="h-4 w-4" />
-              Send Bill PDF & Message via WhatsApp
+              Send Directly to Customer WhatsApp
             </>
           )}
+        </button>
+
+        {/* Optional Share Sheet Button for attaching file if wanted */}
+        <button
+          type="button"
+          onClick={() => handleSendWithPdf(false, true)}
+          disabled={isSharing}
+          className="mt-2 w-full flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 py-2 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 transition"
+          title="Opens device share menu to select apps or attach file"
+        >
+          <ExternalLink className="h-3 w-3 text-slate-400" />
+          Or share via device share sheet (attach PDF file)
         </button>
 
         {/* Secondary Actions: Download PDF, Copy Text, WhatsApp Web */}

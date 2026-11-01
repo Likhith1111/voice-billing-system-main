@@ -16,6 +16,7 @@ export interface InvoiceMessageParams {
   customerName?: string;
   invoiceNumber?: string;
   dateStr?: string;
+  pdfUrl?: string;
 }
 
 export interface ShareInvoiceWhatsAppParams {
@@ -27,6 +28,7 @@ export interface ShareInvoiceWhatsAppParams {
   shopkeeper?: any;
   phone?: string;
   forceWeb?: boolean;
+  useSystemShareSheet?: boolean;
 }
 
 /**
@@ -104,6 +106,7 @@ export function buildInvoiceMessage({
   customerName,
   invoiceNumber,
   dateStr,
+  pdfUrl,
 }: InvoiceMessageParams): string {
   const cleanStoreName = storeName?.trim() || "QBill Store";
   const nowDisplay = dateStr || new Intl.DateTimeFormat("en-IN", {
@@ -139,7 +142,12 @@ export function buildInvoiceMessage({
     message += `UPI ID: *${upiId}*\n`;
   }
 
-  message += `\n📄 *Official bill PDF attached / generated.*`;
+  if (pdfUrl) {
+    message += `\n*📄 View & Download Bill PDF:*\n${pdfUrl}\n`;
+  } else {
+    message += `\n📄 *Official bill PDF generated & saved.*`;
+  }
+
   message += `\nThank you for shopping with us! 🙏`;
 
   return message;
@@ -250,13 +258,11 @@ export async function copyInvoiceText(text: string): Promise<boolean> {
 }
 
 /**
- * Shares both the Bill PDF AND the typed message through WhatsApp:
- * 1. Generates the thermal bill PDF Blob.
- * 2. Checks if Native Web Share API can share the PDF file + typed text together
- *    (Standard on Android Chrome, iOS Safari, etc.) -> Opens WhatsApp with PDF attached and message pre-typed!
- * 3. If Native file share is unavailable or in desktop WhatsApp Web:
- *    - Downloads the PDF file to the device.
- *    - Opens WhatsApp with the customer phone and pre-typed message.
+ * Shares both the Bill PDF AND the typed message directly to the customer's WhatsApp:
+ * 1. Generates the thermal bill PDF Blob and saves/downloads it directly to the device.
+ * 2. Directly opens WhatsApp to the customer's specific chat with the pre-typed invoice breakdown,
+ *    grand total, UPI payment links, and online Bill PDF link.
+ * 3. Does NOT show the generic OS "sharing options" sheet unless explicitly requested.
  */
 export async function shareInvoiceOnWhatsApp({
   bill,
@@ -267,6 +273,7 @@ export async function shareInvoiceOnWhatsApp({
   shopkeeper,
   phone,
   forceWeb = false,
+  useSystemShareSheet = false,
 }: ShareInvoiceWhatsAppParams): Promise<boolean> {
   const invNum =
     invoiceNumber ||
@@ -291,6 +298,9 @@ export async function shareInvoiceOnWhatsApp({
     shopkeeper?.business_name || shopkeeper?.store_name || "QBill Store";
   const upiId = shopkeeper?.upi_id || "qbill@upi";
 
+  const origin = typeof window !== "undefined" && window.location ? window.location.origin : "";
+  const pdfUrl = origin ? `${origin}/invoice/${encodeURIComponent(invNum)}` : "";
+
   const message = buildInvoiceMessage({
     storeName,
     upiId,
@@ -299,6 +309,7 @@ export async function shareInvoiceOnWhatsApp({
     customerName: custName,
     invoiceNumber: invNum,
     dateStr: bill?.time || bill?.created_at_formatted,
+    pdfUrl,
   });
 
   const billObj = {
@@ -321,8 +332,9 @@ export async function shareInvoiceOnWhatsApp({
     console.warn("Could not generate PDF blob for WhatsApp sharing:", pdfErr);
   }
 
-  // 2. Try Native Web Share API with files (Android Chrome, iOS Safari standard)
+  // 2. Only use system share sheet if explicitly requested
   if (
+    useSystemShareSheet &&
     pdfBlob &&
     !forceWeb &&
     typeof navigator !== "undefined" &&
@@ -337,32 +349,33 @@ export async function shareInvoiceOnWhatsApp({
           title: `${storeName} - ${invNum}`,
           text: message,
         });
-        toast.success("Bill PDF & message shared to WhatsApp!");
+        toast.success("Shared via system sheet!");
         return true;
       }
     } catch (shareErr: any) {
       if (shareErr.name === "AbortError") {
-        return true; // User dismissed share sheet
+        return true;
       }
-      console.warn("Navigator share skipped, falling back to download + WhatsApp:", shareErr);
     }
   }
 
-  // 3. Fallback: Download PDF to device & launch WhatsApp with pre-typed message
+  // 3. Direct WhatsApp Send:
+  // Auto-download PDF directly to the device so the user has the local file ready:
   if (pdfBlob) {
     try {
       await downloadOrSharePdf(pdfBlob, filename);
     } catch (e) {
-      console.warn("PDF download fallback error:", e);
+      console.warn("PDF download notice:", e);
     }
   }
 
+  // Direct open to customer's WhatsApp chat without OS share picker:
   openWhatsApp({
     phone,
     message,
     forceWeb,
   });
 
-  toast.success("Bill PDF generated & WhatsApp opened with invoice details!");
+  toast.success("Opened WhatsApp directly to customer with bill & PDF link!");
   return true;
 }
