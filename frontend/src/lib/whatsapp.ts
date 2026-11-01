@@ -1,4 +1,6 @@
+import axios from "axios";
 import { toast } from "sonner";
+import { apiUrl } from "../config/api";
 import { generateInvoicePdfBlob, downloadOrSharePdf, downloadInvoicePdf } from "./pdfGenerator";
 
 export interface InvoiceItem {
@@ -332,7 +334,38 @@ export async function shareInvoiceOnWhatsApp({
     console.warn("Could not generate PDF blob for WhatsApp sharing:", pdfErr);
   }
 
-  // 2. Only use system share sheet if explicitly requested
+  // 2. Try Automated Backend Delivery (directly delivers the actual PDF document to the customer's WhatsApp number!)
+  if (phone && pdfBlob && !useSystemShareSheet) {
+    try {
+      const base64Pdf = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(pdfBlob!);
+      });
+
+      const res = await axios.post(
+        apiUrl("/api/send-whatsapp-pdf/"),
+        {
+          phone,
+          invoice: invNum,
+          customer_name: custName,
+          pdf_base64: base64Pdf,
+          caption: `Official Tax Invoice ${invNum} from ${storeName}`,
+        },
+        { timeout: 7000 }
+      );
+
+      if (res.data?.success) {
+        toast.success(`PDF Bill ${filename} delivered directly to customer's WhatsApp!`);
+        return true;
+      }
+    } catch {
+      // Backend not running or API keys not set, continue to client launch
+    }
+  }
+
+  // 3. Only use system share sheet if explicitly requested
   if (
     useSystemShareSheet &&
     pdfBlob &&

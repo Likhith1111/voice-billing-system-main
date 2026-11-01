@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import DashboardDataView, LoginView, RegisterView, UpdateProfileView, CustomerViewSet, ProductViewSet, BillViewSet, VoiceBillingView, ImageBillingView, GenerateBillView, DetectBarcodeView
+from .views import DashboardDataView, LoginView, RegisterView, UpdateProfileView, CustomerViewSet, ProductViewSet, BillViewSet, VoiceBillingView, ImageBillingView, GenerateBillView, DetectBarcodeView, SendWhatsAppPdfView
 from .admin_views import AdminLoginView, AdminOverviewView, AdminShopsListView, AdminShopDetailView, AdminShopDeleteView
 
 router = DefaultRouter()
@@ -18,6 +18,7 @@ urlpatterns = [
     path('image-billing/', ImageBillingView.as_view(), name='image-billing'),
     path('detect-barcode/', DetectBarcodeView.as_view(), name='detect-barcode'),
     path('generate-bill/', GenerateBillView.as_view(), name='generate-bill'),
+    path('send-whatsapp-pdf/', SendWhatsAppPdfView.as_view(), name='send-whatsapp-pdf'),
     # Platform Admin Endpoints
     path('admin/login/', AdminLoginView.as_view(), name='admin-login'),
     path('admin/overview/', AdminOverviewView.as_view(), name='admin-overview'),

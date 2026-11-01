@@ -903,3 +903,74 @@ If no barcode or digits are visible, reply: NOT_FOUND
                 print("DetectBarcodeView Gemini error:", e)
 
         return Response({"success": False, "error": "Could not detect barcode"}, status=404)
+
+
+from .whatsapp_service import send_whatsapp_pdf_document, is_whatsapp_configured
+
+class SendWhatsAppPdfView(APIView):
+    """
+    Directly sends an actual PDF bill document to a customer's WhatsApp phone number.
+    Uses Meta WhatsApp Business Cloud API or configured gateway.
+    """
+    def post(self, request):
+        phone = request.data.get('phone', '')
+        invoice = request.data.get('invoice', 'INVOICE')
+        customer_name = request.data.get('customer_name', 'Customer')
+        pdf_base64 = request.data.get('pdf_base64', '')
+        caption = request.data.get('caption', f"🛍️ Official Tax Invoice {invoice} from QBill Store. Thank you!")
+
+        if not phone:
+            return Response({"success": False, "error": "Customer phone number is required."}, status=400)
+
+        # Check configuration
+        status = is_whatsapp_configured()
+        if not status["configured"]:
+            return Response({
+                "success": False,
+                "configured": False,
+                "error": "Meta WhatsApp Cloud API credentials not configured in backend/.env",
+                "instructions": "To send the PDF document directly to WhatsApp without user interaction, configure WHATSAPP_CLOUD_API_TOKEN and WHATSAPP_PHONE_NUMBER_ID in backend/.env",
+            }, status=200)
+
+        # Obtain PDF bytes
+        pdf_bytes = None
+        if pdf_base64:
+            try:
+                # Handle data URL prefix if present
+                if ',' in pdf_base64:
+                    pdf_base64 = pdf_base64.split(',', 1)[1]
+                pdf_bytes = base64.b64decode(pdf_base64)
+            except Exception as e:
+                print("Could not decode pdf_base64:", e)
+
+        if not pdf_bytes:
+            # Fallback: Generate via ReportLab
+            buffer = io.BytesIO()
+            p = canvas.Canvas(buffer, pagesize=letter)
+            p.setFont("Helvetica-Bold", 18)
+            p.drawString(100, 750, f"QBill Tax Invoice - {invoice}")
+            p.setFont("Helvetica", 12)
+            p.drawString(100, 720, f"Customer: {customer_name} ({phone})")
+            p.drawString(100, 700, "-" * 50)
+            p.drawString(100, 670, "Thank you for shopping with us!")
+            p.showPage()
+            p.save()
+            buffer.seek(0)
+            pdf_bytes = buffer.getvalue()
+
+        filename = f"{re.sub(r'[^a-zA-Z0-9_-]', '', invoice) or 'invoice'}.pdf"
+        result = send_whatsapp_pdf_document(phone, pdf_bytes, filename=filename, caption=caption)
+
+        if result.get("success"):
+            return Response({
+                "success": True,
+                "message": f"PDF invoice {filename} sent directly to {phone} on WhatsApp!",
+                "message_id": result.get("message_id"),
+                "provider": result.get("provider"),
+            })
+        else:
+            return Response({
+                "success": False,
+                "error": result.get("error", "Failed to send WhatsApp document"),
+            }, status=500)
+
