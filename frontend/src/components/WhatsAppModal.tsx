@@ -255,18 +255,32 @@ export default function WhatsAppModal({
           </div>
         </div>
 
-        {/* Direct WhatsApp Info Card */}
-        <div className="mb-4 rounded-xl border border-emerald-100 bg-emerald-50/70 p-3 text-xs text-emerald-900 flex items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
-            <Send className="h-4 w-4" />
+        {/* Receipt Preview Box matching thermal bill */}
+        <div className="mb-4 rounded-2xl border-2 border-slate-900 bg-white p-3.5 font-mono text-[11px] text-slate-900 shadow-sm">
+          <div className="text-center font-bold tracking-wider text-xs border-b border-dashed border-slate-400 pb-1.5 mb-2">
+            {shopkeeper?.store_name || shopkeeper?.business_name || "RETAIL STORE"}
+            <p className="text-[10px] font-normal text-slate-500">OFFICIAL TAX INVOICE</p>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-[11px] uppercase tracking-wide text-emerald-800">
-              Direct Customer WhatsApp
-            </p>
-            <p className="text-[11px] text-emerald-700 leading-tight">
-              Opens directly into the customer's WhatsApp chat with the typed bill breakdown & online PDF link.
-            </p>
+          <div className="flex justify-between py-0.5 text-[10px]">
+            <span className="text-slate-500">Bill No:</span>
+            <span className="font-bold">{currentInvoiceNum}</span>
+          </div>
+          <div className="flex justify-between py-0.5 text-[10px]">
+            <span className="text-slate-500">Customer:</span>
+            <span className="font-semibold">{getCustomerDisplayName()}</span>
+          </div>
+          <div className="my-1.5 border-t border-dashed border-slate-300" />
+          <div className="space-y-1 max-h-24 overflow-y-auto">
+            {items.map((it, idx) => (
+              <div key={idx} className="flex justify-between">
+                <span className="truncate max-w-[180px]">{idx + 1}. {it.product}</span>
+                <span className="font-semibold">₹{(Number(it.quantity || 1) * Number(it.unit_price || 0)).toLocaleString("en-IN")}</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 pt-1.5 border-t-2 border-slate-900 flex justify-between font-bold text-xs">
+            <span>GRAND TOTAL</span>
+            <span>₹{grandTotal.toLocaleString("en-IN")}</span>
           </div>
         </div>
 
@@ -363,36 +377,35 @@ export default function WhatsAppModal({
           </div>
         </div>
 
-        {/* Primary Action Button: Direct to WhatsApp */}
-        <button
-          type="button"
-          onClick={() => handleSendWithPdf(false, false)}
-          disabled={isSharing}
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] py-3.5 text-sm font-black text-white shadow-lg shadow-[#25D366]/30 transition hover:bg-[#20bd5a] active:scale-[0.98] disabled:opacity-60"
-        >
-          {isSharing ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Opening Customer WhatsApp...
-            </>
-          ) : (
-            <>
-              <Send className="h-4 w-4" />
-              Send Directly to Customer WhatsApp
-            </>
-          )}
-        </button>
-
-        {/* Optional Share Sheet Button for attaching file if wanted */}
+        {/* Primary Action Button: Share PDF directly */}
         <button
           type="button"
           onClick={() => handleSendWithPdf(false, true)}
           disabled={isSharing}
-          className="mt-2 w-full flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 py-2 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 transition"
-          title="Opens device share menu to select apps or attach file"
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] py-3.5 text-sm font-black text-white shadow-lg shadow-[#25D366]/30 transition hover:bg-[#20bd5a] active:scale-[0.98] disabled:opacity-60"
         >
-          <ExternalLink className="h-3 w-3 text-slate-400" />
-          Or share via device share sheet (attach PDF file)
+          {isSharing ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Preparing PDF & WhatsApp...
+            </>
+          ) : (
+            <>
+              <FileText className="h-4 w-4" />
+              Share This Bill PDF to WhatsApp
+            </>
+          )}
+        </button>
+
+        {/* Direct WhatsApp Chat Action */}
+        <button
+          type="button"
+          onClick={() => handleSendWithPdf(false, false)}
+          disabled={isSharing}
+          className="mt-2 w-full flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-100 transition"
+        >
+          <Send className="h-3.5 w-3.5 text-emerald-600" />
+          Open Direct Chat to {getTargetPhone() || "Customer"} (PDF Auto-Downloaded)
         </button>
 
         {/* Secondary Actions: Download PDF, Copy Text, WhatsApp Web */}

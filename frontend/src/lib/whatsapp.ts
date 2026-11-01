@@ -108,7 +108,6 @@ export function buildInvoiceMessage({
   customerName,
   invoiceNumber,
   dateStr,
-  pdfUrl,
 }: InvoiceMessageParams): string {
   const cleanStoreName = storeName?.trim() || "QBill Store";
   const nowDisplay = dateStr || new Intl.DateTimeFormat("en-IN", {
@@ -144,12 +143,7 @@ export function buildInvoiceMessage({
     message += `UPI ID: *${upiId}*\n`;
   }
 
-  if (pdfUrl) {
-    message += `\n*📄 View & Download Bill PDF:*\n${pdfUrl}\n`;
-  } else {
-    message += `\n📄 *Official bill PDF generated & saved.*`;
-  }
-
+  message += `\n📄 *Official bill PDF receipt attached.*`;
   message += `\nThank you for shopping with us! 🙏`;
 
   return message;
@@ -300,9 +294,6 @@ export async function shareInvoiceOnWhatsApp({
     shopkeeper?.business_name || shopkeeper?.store_name || "QBill Store";
   const upiId = shopkeeper?.upi_id || "qbill@upi";
 
-  const origin = typeof window !== "undefined" && window.location ? window.location.origin : "";
-  const pdfUrl = origin ? `${origin}/invoice/${encodeURIComponent(invNum)}` : "";
-
   const message = buildInvoiceMessage({
     storeName,
     upiId,
@@ -311,7 +302,6 @@ export async function shareInvoiceOnWhatsApp({
     customerName: custName,
     invoiceNumber: invNum,
     dateStr: bill?.time || bill?.created_at_formatted,
-    pdfUrl,
   });
 
   const billObj = {
