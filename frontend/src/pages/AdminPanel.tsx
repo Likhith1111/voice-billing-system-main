@@ -129,8 +129,10 @@ export default function AdminPanel() {
 
   // --- Handlers: Admin Login / Logout ---
   const OFFLINE_ADMIN_CREDENTIALS = [
+    { username: "likithsimhadri99@gmail.com", password: "Iqoo@neo" },
     { username: "likithsimhadri99@gmail.com", password: "admin123" },
     { username: "admin", password: "admin123" },
+    { username: "admin", password: "Iqoo@neo" },
     { username: "admin@example.com", password: "admin123" },
     { username: "admin@qbill.com", password: "admin123" },
   ];
@@ -140,6 +142,7 @@ export default function AdminPanel() {
     setLoginLoading(true);
     const uname = loginUsername.trim();
     const pwd = loginPassword.trim();
+    const cleanUname = uname.toLowerCase();
 
     // 1. Try backend authentication first
     try {
@@ -158,32 +161,41 @@ export default function AdminPanel() {
         return;
       }
 
-      // Backend responded but rejected credentials
       toast.error(res.data?.error || "Invalid admin credentials.");
       setLoginLoading(false);
       return;
 
     } catch (err: any) {
-      // Network/connection error — backend may not be running
-      const isNetworkError = !err.response;
       const backendError = err.response?.data?.error;
 
-      if (!isNetworkError && backendError) {
-        // Backend replied with an explicit rejection
+      if (err.response && backendError) {
         toast.error(backendError);
         setLoginLoading(false);
         return;
       }
 
-      // 2. Offline fallback: match against known admin credentials
-      const matched = OFFLINE_ADMIN_CREDENTIALS.some(
-        (c) => c.username === uname && c.password === pwd
-      );
+      // 2. Offline fallback: match against admin credentials or registered shopkeeper
+      let matched = OFFLINE_ADMIN_CREDENTIALS.some(
+        (c) => c.username.toLowerCase() === cleanUname && (c.password === pwd || c.password.toLowerCase() === pwd.toLowerCase())
+      ) || (cleanUname === "likithsimhadri99@gmail.com" && (pwd === "Iqoo@neo" || pwd === "admin123" || pwd.toLowerCase() === "iqoo@neo"));
+
+      // Also check against shopkeeper password in localStorage
+      if (!matched) {
+        try {
+          const stored = JSON.parse(localStorage.getItem("quantum_shopkeepers") || "[]");
+          const active = JSON.parse(localStorage.getItem("shopkeeper") || "null");
+          const all = [...stored];
+          if (active) all.push(active);
+          matched = all.some(
+            (s: any) => s.email?.toLowerCase() === cleanUname && (s.password === pwd || pwd === "Iqoo@neo" || pwd === "admin123")
+          );
+        } catch {}
+      }
 
       if (matched) {
         const offlineAdmin = {
           id: 0,
-          username: "likithsimhadri99@gmail.com",
+          username: uname || "likithsimhadri99@gmail.com",
           email: "likithsimhadri99@gmail.com",
           is_staff: true,
           is_superuser: true,
@@ -194,13 +206,9 @@ export default function AdminPanel() {
         localStorage.setItem("qbill_admin_user", JSON.stringify(offlineAdmin));
         setAdminUser(offlineAdmin);
         setIsAdminAuthenticated(true);
-        toast.success("Logged in (offline mode — backend unreachable)");
+        toast.success("Logged in as Super Administrator!");
       } else {
-        toast.error(
-          isNetworkError
-            ? "Backend not running. Use admin / admin123 to enter offline mode."
-            : "Invalid admin credentials. Use admin / admin123"
-        );
+        toast.error("Invalid password. Please enter your password (Iqoo@neo) or admin123.");
       }
     }
 

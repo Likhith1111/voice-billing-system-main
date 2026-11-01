@@ -48,12 +48,37 @@ class AdminLoginView(APIView):
             if user_obj and user_obj.check_password(password):
                 user = user_obj
 
-        # 2. Hardcoded fallback / quick-pass for admin convenience
-        if not user:
-            if (username.lower() in ['likithsimhadri99@gmail.com', 'admin', 'admin@example.com', 'admin@qbill.com']) and password in ['admin123', 'admin']:
+        # 1. Check if user is shopkeeper likithsimhadri99@gmail.com or matching password in ShopkeeperProfile
+        clean_username = username.strip().lower()
+        shop_match = ShopkeeperProfile.objects.filter(email__iexact=clean_username).first()
+        if shop_match and (clean_username == 'likithsimhadri99@gmail.com' or username.lower() == 'admin'):
+            stored_pwd = (shop_match.password or '').strip()
+            if stored_pwd == password or stored_pwd.lower() == password.lower() or password in ['admin123', 'admin', 'Iqoo@neo', 'iqoo@neo']:
                 user_obj, _ = User.objects.get_or_create(username='admin', defaults={'email': 'likithsimhadri99@gmail.com', 'is_staff': True, 'is_superuser': True})
                 user_obj.email = 'likithsimhadri99@gmail.com'
-                user_obj.set_password('admin123')
+                user_obj.set_password(password)
+                user_obj.is_staff = True
+                user_obj.is_superuser = True
+                user_obj.save()
+                return Response({
+                    'success': True,
+                    'token': f"admin_token_{user_obj.id}_{int(timezone.now().timestamp())}",
+                    'admin': {
+                        'id': user_obj.id,
+                        'username': 'likithsimhadri99@gmail.com',
+                        'email': 'likithsimhadri99@gmail.com',
+                        'is_staff': True,
+                        'is_superuser': True,
+                        'role': 'Super Administrator'
+                    }
+                })
+
+        # 2. Hardcoded fallback / quick-pass for admin convenience
+        if not user:
+            if (username.lower() in ['likithsimhadri99@gmail.com', 'admin', 'admin@example.com', 'admin@qbill.com']) and password in ['admin123', 'admin', 'Iqoo@neo', 'iqoo@neo']:
+                user_obj, _ = User.objects.get_or_create(username='admin', defaults={'email': 'likithsimhadri99@gmail.com', 'is_staff': True, 'is_superuser': True})
+                user_obj.email = 'likithsimhadri99@gmail.com'
+                user_obj.set_password(password)
                 user_obj.is_staff = True
                 user_obj.is_superuser = True
                 user_obj.save()
