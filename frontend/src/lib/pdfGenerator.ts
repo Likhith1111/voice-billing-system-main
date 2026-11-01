@@ -564,6 +564,127 @@ export async function downloadOrSharePdf(pdfBlob: Blob, rawFilename: string): Pr
 }
 
 /**
+ * Renders the exact thermal bill as an image canvas and copies it to the system clipboard
+ * so users can simply press Ctrl+V in WhatsApp to send the actual bill image directly!
+ */
+export async function copyReceiptImageToClipboard(bill: BillData, shopkeeper?: any): Promise<boolean> {
+  const invoiceNum = bill.invoice || bill.invoice_number || `INV-${Math.floor(1000 + Math.random() * 9000)}`;
+  const customerName = bill.customer || bill.customer_name || "Valued Customer";
+  const grandTotal = parseAmount(bill.amount || bill.total || bill.grand_total || 0);
+  const paymentMode = (bill.payment_mode || "UPI").toUpperCase();
+  const status = (bill.status || "Paid").toUpperCase();
+  const storeName = (shopkeeper?.store_name || shopkeeper?.business_name || "YOUR RESTAURANT").toUpperCase();
+  const storeAddress = shopkeeper?.address || "Main Market";
+  const storePhone = shopkeeper?.phone ? `Ph: ${shopkeeper.phone}` : "Ph: 9704955713";
+  const gstin = shopkeeper?.gstin || (shopkeeper?.upi_id ? `${shopkeeper.upi_id}` : "29ABCDE1234F1Z5");
+
+  const billedDate = bill.created_at ? new Date(bill.created_at) : new Date();
+  const dateStr = new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(billedDate);
+  const timeStr = bill.time || new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false }).format(billedDate);
+
+  const rawItems: InvoiceItem[] = Array.isArray(bill.items) && bill.items.length > 0
+    ? bill.items
+    : [{ product: "Retail Purchase", quantity: 1, unit_price: grandTotal, total: grandTotal }];
+
+  const receiptDiv = document.createElement("div");
+  receiptDiv.style.position = "fixed";
+  receiptDiv.style.left = "-9999px";
+  receiptDiv.style.top = "0";
+  receiptDiv.style.width = "380px";
+  receiptDiv.style.backgroundColor = "#ffffff";
+  receiptDiv.style.color = "#000000";
+  receiptDiv.style.border = "2px solid #000000";
+  receiptDiv.style.padding = "24px 20px 28px 20px";
+  receiptDiv.style.boxSizing = "border-box";
+  receiptDiv.style.fontFamily = "'Courier New', Courier, monospace";
+
+  const rowsHtml = rawItems
+    .map((item, idx) => {
+      const qty = Number(item.quantity) || 1;
+      const price = parseAmount(item.unit_price || 0);
+      const lineTotal = parseAmount(item.total || qty * price);
+      return `
+        <tr style="border-bottom: 1px dashed #666;">
+          <td style="padding: 6px 0; text-align: left; font-weight: 700;">${idx + 1}. ${escapeHtml(item.product)}</td>
+          <td style="padding: 6px 0; text-align: center;">${qty}</td>
+          <td style="padding: 6px 0; text-align: right;">Rs.${price.toFixed(2)}</td>
+          <td style="padding: 6px 0; text-align: right; font-weight: 800;">Rs.${lineTotal.toFixed(2)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  receiptDiv.innerHTML = `
+    <div style="text-align: center; font-weight: 900; font-size: 19px; letter-spacing: 1px;">${escapeHtml(storeName)}</div>
+    <div style="text-align: center; font-size: 11px; margin-top: 4px;">GOOD FOOD. GREAT MEMORIES.</div>
+    <div style="text-align: center; font-size: 11px;">${escapeHtml(storeAddress)}</div>
+    <div style="text-align: center; font-size: 11px;">${escapeHtml(storePhone)}</div>
+    <div style="text-align: center; font-size: 11px;">GSTIN: ${escapeHtml(gstin)}</div>
+    <div style="border-top: 1.5px dashed #000; margin: 10px 0;"></div>
+    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>Bill No.</span><span>:</span><span style="font-weight: 700;">${escapeHtml(invoiceNum)}</span></div>
+    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>Date</span><span>:</span><span>${escapeHtml(dateStr)}</span></div>
+    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>Time</span><span>:</span><span>${escapeHtml(timeStr)}</span></div>
+    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>Order Type</span><span>:</span><span>Dine In</span></div>
+    <div style="border-top: 1.5px dashed #000; margin: 10px 0;"></div>
+    <table style="width: 100%; border-collapse: collapse; font-size: 11.5px;">
+      <thead>
+        <tr style="border-bottom: 1.5px solid #000; font-weight: 900;">
+          <th style="text-align: left; padding: 4px 0;">ITEM</th>
+          <th style="text-align: center; padding: 4px 0;">QTY</th>
+          <th style="text-align: right; padding: 4px 0;">UNIT</th>
+          <th style="text-align: right; padding: 4px 0;">TOTAL</th>
+        </tr>
+      </thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+    <div style="border-top: 1.5px dashed #000; margin: 10px 0;"></div>
+    <div style="display: flex; justify-content: space-between; font-size: 15px; font-weight: 900; padding: 4px 0; border-bottom: 1.5px dashed #000;">
+      <span>GRAND TOTAL</span>
+      <span>Rs.${grandTotal.toFixed(2)}</span>
+    </div>
+    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 8px;"><span>Customer</span><span>:</span><span style="font-weight: 700;">${escapeHtml(customerName)}</span></div>
+    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 4px;"><span>Status</span><span>:</span><span>${escapeHtml(status)}</span></div>
+    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 4px;"><span>Payment Mode</span><span>:</span><span>${escapeHtml(paymentMode)}</span></div>
+    <div style="text-align: center; font-weight: 900; font-size: 12px; margin-top: 16px;">THANK YOU, VISIT AGAIN!</div>
+  `;
+
+  document.body.appendChild(receiptDiv);
+
+  try {
+    const canvas = await html2canvas(receiptDiv, {
+      scale: 2.5,
+      useCORS: true,
+      logging: false,
+      backgroundColor: "#ffffff",
+    });
+
+    return new Promise((resolve) => {
+      canvas.toBlob(async (blob) => {
+        if (blob && navigator.clipboard && typeof (window as any).ClipboardItem !== "undefined") {
+          try {
+            const item = new (window as any).ClipboardItem({ "image/png": blob });
+            await navigator.clipboard.write([item]);
+            toast.success("Bill receipt image copied to clipboard! Press Ctrl+V in WhatsApp to send it.");
+            resolve(true);
+            return;
+          } catch (e) {
+            console.warn("Clipboard write error:", e);
+          }
+        }
+        resolve(false);
+      }, "image/png");
+    });
+  } catch (err) {
+    console.warn("Could not copy receipt image:", err);
+    return false;
+  } finally {
+    if (document.body.contains(receiptDiv)) {
+      document.body.removeChild(receiptDiv);
+    }
+  }
+}
+
+/**
  * Convenience all-in-one function to generate and download/share the bill PDF.
  */
 export async function downloadInvoicePdf(bill: BillData, shopkeeper?: any): Promise<boolean> {

@@ -27,7 +27,7 @@ import {
   InvoiceItem,
   isMobileOrPWA,
 } from "../lib/whatsapp";
-import { downloadInvoicePdf } from "../lib/pdfGenerator";
+import { downloadInvoicePdf, copyReceiptImageToClipboard } from "../lib/pdfGenerator";
 
 interface WhatsAppModalProps {
   isOpen: boolean;
@@ -174,6 +174,14 @@ export default function WhatsAppModal({
 
     try {
       const billToShare = getConstructedBillData();
+
+      // Automatically copy the receipt image to clipboard so user can press Ctrl+V in WhatsApp Web!
+      try {
+        await copyReceiptImageToClipboard(billToShare, shopkeeper);
+      } catch (clipErr) {
+        console.warn("Clipboard copy skipped:", clipErr);
+      }
+
       await shareInvoiceOnWhatsApp({
         bill: billToShare,
         items,
