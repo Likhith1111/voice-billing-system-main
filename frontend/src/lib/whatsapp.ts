@@ -1,9 +1,11 @@
 import { toast } from "sonner";
+import { generateInvoicePdfBlob, downloadOrSharePdf, downloadInvoicePdf } from "./pdfGenerator";
 
 export interface InvoiceItem {
   product: string;
   quantity: number;
   unit_price: number;
+  total?: number;
 }
 
 export interface InvoiceMessageParams {
@@ -13,6 +15,18 @@ export interface InvoiceMessageParams {
   grandTotal: number;
   customerName?: string;
   invoiceNumber?: string;
+  dateStr?: string;
+}
+
+export interface ShareInvoiceWhatsAppParams {
+  bill: any;
+  items?: InvoiceItem[];
+  grandTotal?: number;
+  customerName?: string;
+  invoiceNumber?: string;
+  shopkeeper?: any;
+  phone?: string;
+  forceWeb?: boolean;
 }
 
 /**
@@ -89,30 +103,43 @@ export function buildInvoiceMessage({
   grandTotal,
   customerName,
   invoiceNumber,
+  dateStr,
 }: InvoiceMessageParams): string {
   const cleanStoreName = storeName?.trim() || "QBill Store";
-  let message = `*🛍️ ${cleanStoreName} Invoice*\n`;
+  const nowDisplay = dateStr || new Intl.DateTimeFormat("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date());
+
+  let message = `*🛍️ ${cleanStoreName.toUpperCase()} - OFFICIAL INVOICE*\n`;
   if (invoiceNumber) {
     message += `*Invoice No:* ${invoiceNumber}\n`;
   }
+  message += `*Date:* ${nowDisplay}\n`;
   if (customerName && customerName.trim() && customerName !== "Walk-in Customer") {
     message += `*Customer:* ${customerName.trim()}\n`;
   }
-  message += `\n`;
+  message += `--------------------------------\n`;
 
   items.forEach((item, index) => {
     const qty = Number(item.quantity) || 1;
     const price = Number(item.unit_price) || 0;
+    const lineTotal = qty * price;
     message += `${index + 1}. *${item.product}*\n`;
-    message += `    Qty: ${qty} × ₹${price} = ₹${qty * price}\n`;
+    message += `    Qty: ${qty} × ₹${price.toLocaleString("en-IN")} = *₹${lineTotal.toLocaleString("en-IN")}*\n`;
   });
 
-  message += `\n*Grand Total: ₹${grandTotal}*\n`;
-  message += `\n*💳 Payment Options:*\n`;
+  message += `--------------------------------\n`;
+  message += `*💰 Grand Total: ₹${grandTotal.toLocaleString("en-IN")}*\n`;
 
-  const upiPayUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(cleanStoreName)}&am=${grandTotal}&cu=INR`;
-  message += `1. Pay via UPI App: ${upiPayUrl}\n`;
-  message += `2. Or Pay to UPI ID: ${upiId}\n`;
+  if (upiId) {
+    message += `\n*💳 Pay via UPI:*\n`;
+    const upiPayUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(cleanStoreName)}&am=${grandTotal}&cu=INR`;
+    message += `UPI App: ${upiPayUrl}\n`;
+    message += `UPI ID: *${upiId}*\n`;
+  }
+
+  message += `\n📄 *Official bill PDF attached / generated.*`;
   message += `\nThank you for shopping with us! 🙏`;
 
   return message;
@@ -121,12 +148,6 @@ export function buildInvoiceMessage({
 /**
  * Opens WhatsApp either via native protocol scheme (for mobile apps / PWAs)
  * or via WhatsApp Web (for desktop).
- *
- * CRITICAL FIX FOR MOBILE:
- * - On mobile/PWAs, window.open(..., '_blank') is blocked by popup blockers,
- *   especially in standalone PWAs or if called after any async delay.
- * - Calling 'whatsapp://send' directly via anchor click or location.href
- *   launches the native WhatsApp application reliably on iOS and Android.
  */
 export function openWhatsApp({
   phone,
@@ -187,7 +208,6 @@ export function openWhatsApp({
     // DESKTOP:
     const newWindow = window.open(webUrl, "_blank", "noopener,noreferrer");
     if (!newWindow || newWindow.closed || typeof newWindow.closed === "undefined") {
-      // If popup blocker blocked it on desktop, fall back to navigating or wa.me
       window.location.href = webUrl;
     }
   }
@@ -227,4 +247,122 @@ export async function copyInvoiceText(text: string): Promise<boolean> {
 
   toast.error("Could not copy invoice text.");
   return false;
+}
+
+/**
+ * Shares both the Bill PDF AND the typed message through WhatsApp:
+ * 1. Generates the thermal bill PDF Blob.
+ * 2. Checks if Native Web Share API can share the PDF file + typed text together
+ *    (Standard on Android Chrome, iOS Safari, etc.) -> Opens WhatsApp with PDF attached and message pre-typed!
+ * 3. If Native file share is unavailable or in desktop WhatsApp Web:
+ *    - Downloads the PDF file to the device.
+ *    - Opens WhatsApp with the customer phone and pre-typed message.
+ */
+export async function shareInvoiceOnWhatsApp({
+  bill,
+  items,
+  grandTotal,
+  customerName,
+  invoiceNumber,
+  shopkeeper,
+  phone,
+  forceWeb = false,
+}: ShareInvoiceWhatsAppParams): Promise<boolean> {
+  const invNum =
+    invoiceNumber ||
+    bill?.invoice ||
+    bill?.invoice_number ||
+    `INV-${Date.now().toString().slice(-6)}`;
+  const custName =
+    customerName || bill?.customer || bill?.customer_name || "Walk-in Customer";
+  const rawItems = items || bill?.items || [];
+  const normalizedItems: InvoiceItem[] = rawItems.map((it: any) => ({
+    product: it.product || it.name || "Item",
+    quantity: Number(it.quantity || it.qty || 1),
+    unit_price: Number(it.unit_price || it.price || 0),
+  }));
+
+  const total =
+    grandTotal !== undefined && grandTotal !== null
+      ? grandTotal
+      : parseFloat(String(bill?.amount || bill?.total || 0).replace(/[^\d.]/g, "")) || 0;
+
+  const storeName =
+    shopkeeper?.business_name || shopkeeper?.store_name || "QBill Store";
+  const upiId = shopkeeper?.upi_id || "qbill@upi";
+
+  const message = buildInvoiceMessage({
+    storeName,
+    upiId,
+    items: normalizedItems,
+    grandTotal: total,
+    customerName: custName,
+    invoiceNumber: invNum,
+    dateStr: bill?.time || bill?.created_at_formatted,
+  });
+
+  const billObj = {
+    ...bill,
+    invoice: invNum,
+    invoice_number: invNum,
+    customer: custName,
+    amount: `₹${total}`,
+    items: normalizedItems,
+  };
+
+  const cleanName = invNum.replace(/[^a-zA-Z0-9_-]/g, "");
+  const filename = `${cleanName || "invoice"}.pdf`;
+
+  // 1. Generate the PDF blob
+  let pdfBlob: Blob | null = null;
+  try {
+    pdfBlob = await generateInvoicePdfBlob(billObj, shopkeeper);
+  } catch (pdfErr) {
+    console.warn("Could not generate PDF blob for WhatsApp sharing:", pdfErr);
+  }
+
+  // 2. Try Native Web Share API with files (Android Chrome, iOS Safari standard)
+  if (
+    pdfBlob &&
+    !forceWeb &&
+    typeof navigator !== "undefined" &&
+    typeof File !== "undefined" &&
+    navigator.canShare
+  ) {
+    try {
+      const file = new File([pdfBlob], filename, { type: "application/pdf" });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `${storeName} - ${invNum}`,
+          text: message,
+        });
+        toast.success("Bill PDF & message shared to WhatsApp!");
+        return true;
+      }
+    } catch (shareErr: any) {
+      if (shareErr.name === "AbortError") {
+        return true; // User dismissed share sheet
+      }
+      console.warn("Navigator share skipped, falling back to download + WhatsApp:", shareErr);
+    }
+  }
+
+  // 3. Fallback: Download PDF to device & launch WhatsApp with pre-typed message
+  if (pdfBlob) {
+    try {
+      await downloadOrSharePdf(pdfBlob, filename);
+    } catch (e) {
+      console.warn("PDF download fallback error:", e);
+    }
+  }
+
+  openWhatsApp({
+    phone,
+    message,
+    forceWeb,
+  });
+
+  toast.success("Bill PDF generated & WhatsApp opened with invoice details!");
+  return true;
 }

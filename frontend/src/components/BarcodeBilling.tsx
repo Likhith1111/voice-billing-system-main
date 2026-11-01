@@ -75,6 +75,8 @@ export default function BarcodeBilling() {
   // WhatsApp Modal State
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [billCustomerName, setBillCustomerName] = useState("");
+  const [billCustomerPhone, setBillCustomerPhone] = useState("");
+  const [completedBillForWhatsApp, setCompletedBillForWhatsApp] = useState<any | null>(null);
   const [manualBarcode, setManualBarcode] = useState("");
 
   // Payment Mode & UPI State
@@ -570,9 +572,12 @@ export default function BarcodeBilling() {
       status = "Paid",
   }: any) => {
       const _now = new Date();
+      const currentPhone = billCustomerPhone.trim();
       const billRecord = {
           invoice: invoiceNumber,
           customer: customerNameToSave,
+          phone: currentPhone,
+          customer_phone: currentPhone,
           amount: `₹${grandTotal}`,
           time: new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }).format(_now),
           created_at: _now.toISOString(),
@@ -584,22 +589,33 @@ export default function BarcodeBilling() {
           shopkeeper_email: shopkeeper?.email
       };
 
+      let finalSavedBill: any = billRecord;
       try {
           const res = await axios.post(apiUrl("/api/bills/"), billRecord, { timeout: 3000 });
-          const savedBill = res.data?.invoice ? res.data : billRecord;
-          addStoreBill(savedBill, shopkeeper?.email);
-          toast.success(`Sale recorded via ${payment_mode}! Bill generated. Downloading PDF...`);
-          await downloadInvoicePdf(savedBill, shopkeeper);
-          setBillCustomerName("");
-          handleClear();
+          finalSavedBill = res.data?.invoice ? res.data : billRecord;
+          addStoreBill(finalSavedBill, shopkeeper?.email);
       } catch (err) {
           console.warn("Backend offline, saving bill locally:", err);
-          const savedBill = addStoreBill(billRecord, shopkeeper?.email);
-          toast.success(`Sale recorded via ${payment_mode}! Bill generated. Downloading PDF...`);
-          await downloadInvoicePdf(savedBill, shopkeeper);
-          setBillCustomerName("");
-          handleClear();
+          finalSavedBill = addStoreBill(billRecord, shopkeeper?.email);
       }
+
+      try {
+          await downloadInvoicePdf(finalSavedBill, shopkeeper);
+      } catch (e) {
+          console.warn("PDF download notice:", e);
+      }
+
+      setCompletedBillForWhatsApp({
+          ...finalSavedBill,
+          items: [...items],
+          grandTotal: grandTotal,
+          phone: currentPhone,
+      });
+      setShowWhatsAppModal(true);
+      toast.success(`Sale recorded via ${payment_mode}! Bill generated & WhatsApp ready.`);
+      setBillCustomerName("");
+      setBillCustomerPhone("");
+      handleClear();
   };
 
   return (
@@ -840,14 +856,29 @@ export default function BarcodeBilling() {
                 </div>
 
                 <div className="mb-6 rounded-2xl bg-slate-50 p-5">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Customer Name (Optional)</label>
-                    <input 
-                        type="text" 
-                        placeholder="Leave blank for Walk-in Customer" 
-                        value={billCustomerName} 
-                        onChange={(e) => setBillCustomerName(e.target.value)} 
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100/70" 
-                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Customer Name (Optional)</label>
+                            <input 
+                                type="text" 
+                                placeholder="Leave blank for Walk-in Customer" 
+                                value={billCustomerName} 
+                                onChange={(e) => setBillCustomerName(e.target.value)} 
+                                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-violet-300 focus:bg-white focus:ring-4 focus:ring-violet-100/70" 
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Customer WhatsApp Number (Optional)</label>
+                            <input 
+                                type="tel" 
+                                inputMode="tel"
+                                placeholder="e.g. 9876543210 (For WhatsApp PDF bill)" 
+                                value={billCustomerPhone} 
+                                onChange={(e) => setBillCustomerPhone(e.target.value)} 
+                                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-100/70" 
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 {/* Action buttons — grid on mobile, row on desktop */}
@@ -951,11 +982,18 @@ export default function BarcodeBilling() {
         
         <WhatsAppModal
             isOpen={showWhatsAppModal}
-            onClose={() => setShowWhatsAppModal(false)}
-            items={items}
-            grandTotal={calculateGrandTotal()}
-            initialCustomerName={billCustomerName}
+            onClose={() => {
+                setShowWhatsAppModal(false);
+                setCompletedBillForWhatsApp(null);
+            }}
+            items={completedBillForWhatsApp?.items || items}
+            grandTotal={completedBillForWhatsApp?.grandTotal || calculateGrandTotal()}
+            initialCustomerName={completedBillForWhatsApp?.customer || billCustomerName}
+            initialCustomerPhone={completedBillForWhatsApp?.phone || billCustomerPhone}
+            invoiceNumber={completedBillForWhatsApp?.invoice || pendingInvoice?.invoiceNumber}
             shopkeeper={shopkeeper}
+            billData={completedBillForWhatsApp}
+            isCompletedBill={Boolean(completedBillForWhatsApp)}
         />
 
         {imgSrc && (

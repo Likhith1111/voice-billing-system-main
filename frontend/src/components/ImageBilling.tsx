@@ -71,6 +71,8 @@ export default function ImageBilling() {
   // WhatsApp Modal State
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [billCustomerName, setBillCustomerName] = useState("");
+  const [billCustomerPhone, setBillCustomerPhone] = useState("");
+  const [completedBillForWhatsApp, setCompletedBillForWhatsApp] = useState<any | null>(null);
 
   // Payment Mode & UPI State
   const [showPaymentModeModal, setShowPaymentModeModal] = useState(false);
@@ -631,9 +633,12 @@ Output only raw JSON, no markdown formatting or commentary.`;
     status = "Paid",
   }: any) => {
     const _now = new Date();
+    const currentPhone = billCustomerPhone.trim();
     const billRecord = {
       invoice: invoiceNumber,
       customer: customerNameToSave,
+      phone: currentPhone,
+      customer_phone: currentPhone,
       amount: `₹${grandTotal}`,
       time: new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }).format(_now),
       created_at: _now.toISOString(),
@@ -645,22 +650,33 @@ Output only raw JSON, no markdown formatting or commentary.`;
       shopkeeper_email: shopkeeper?.email,
     };
 
+    let finalSavedBill: any = billRecord;
     try {
       const res = await axios.post(apiUrl("/api/bills/"), billRecord, { timeout: 3000 });
-      const savedBill = res.data?.invoice ? res.data : billRecord;
-      addStoreBill(savedBill, shopkeeper?.email);
-      toast.success(`Sale recorded via ${payment_mode}! Bill generated. Downloading PDF...`);
-      await downloadInvoicePdf(savedBill, shopkeeper);
-      setBillCustomerName("");
-      handleClear();
+      finalSavedBill = res.data?.invoice ? res.data : billRecord;
+      addStoreBill(finalSavedBill, shopkeeper?.email);
     } catch {
       console.warn("Backend offline, saving bill locally");
-      const savedBill = addStoreBill(billRecord, shopkeeper?.email);
-      toast.success(`Sale recorded via ${payment_mode}! Bill generated. Downloading PDF...`);
-      await downloadInvoicePdf(savedBill, shopkeeper);
-      setBillCustomerName("");
-      handleClear();
+      finalSavedBill = addStoreBill(billRecord, shopkeeper?.email);
     }
+
+    try {
+      await downloadInvoicePdf(finalSavedBill, shopkeeper);
+    } catch (e) {
+      console.warn("PDF download notice:", e);
+    }
+
+    setCompletedBillForWhatsApp({
+      ...finalSavedBill,
+      items: [...items],
+      grandTotal: grandTotal,
+      phone: currentPhone,
+    });
+    setShowWhatsAppModal(true);
+    toast.success(`Sale recorded via ${payment_mode}! Bill generated & WhatsApp ready.`);
+    setBillCustomerName("");
+    setBillCustomerPhone("");
+    handleClear();
   };
 
 
@@ -1322,18 +1338,35 @@ Output only raw JSON, no markdown formatting or commentary.`;
             </table>
           </div>
 
-          {/* Customer name */}
+          {/* Customer name & phone */}
           <div className="mb-5 rounded-2xl bg-slate-50 p-3.5 sm:p-5 border border-slate-100">
-            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500">
-              Customer Name (Optional)
-            </label>
-            <input
-              type="text"
-              placeholder="Walk-in Customer"
-              value={billCustomerName}
-              onChange={(e) => setBillCustomerName(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-violet-300 focus:ring-4 focus:ring-violet-100/70"
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Customer Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Walk-in Customer"
+                  value={billCustomerName}
+                  onChange={(e) => setBillCustomerName(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-violet-300 focus:ring-4 focus:ring-violet-100/70"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Customer WhatsApp Number (Optional)
+                </label>
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  placeholder="e.g. 9876543210 (For WhatsApp PDF bill)"
+                  value={billCustomerPhone}
+                  onChange={(e) => setBillCustomerPhone(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100/70"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Action buttons (Mobile First) */}
@@ -1466,11 +1499,18 @@ Output only raw JSON, no markdown formatting or commentary.`;
       {/* ── WhatsApp Modal ── */}
       <WhatsAppModal
         isOpen={showWhatsAppModal}
-        onClose={() => setShowWhatsAppModal(false)}
-        items={items}
-        grandTotal={calculateGrandTotal()}
-        initialCustomerName={billCustomerName}
+        onClose={() => {
+          setShowWhatsAppModal(false);
+          setCompletedBillForWhatsApp(null);
+        }}
+        items={completedBillForWhatsApp?.items || items}
+        grandTotal={completedBillForWhatsApp?.grandTotal || calculateGrandTotal()}
+        initialCustomerName={completedBillForWhatsApp?.customer || billCustomerName}
+        initialCustomerPhone={completedBillForWhatsApp?.phone || billCustomerPhone}
+        invoiceNumber={completedBillForWhatsApp?.invoice || pendingInvoice?.invoiceNumber}
         shopkeeper={shopkeeper}
+        billData={completedBillForWhatsApp}
+        isCompletedBill={Boolean(completedBillForWhatsApp)}
       />
 
       {/* Payment Mode Selection Modal */}

@@ -362,41 +362,35 @@ export default function AdminPanel() {
   // --- Inspect Specific Shop ---
   const handleInspectShop = async (shopId: number) => {
     setSelectedShopId(shopId);
-    setDetailLoading(true);
 
     const targetShop = shops.find((s) => s.id === shopId);
 
-    try {
-      const res = await axios.get(apiUrl(`/api/admin/shops/${shopId}/`));
-      if (res.data.success && res.data.shop) {
-        // If server bills are empty but local bills exist, merge
-        const serverShop = res.data.shop;
-        if (targetShop?.email) {
-          const localBills = getStoreBills(targetShop.email);
-          if (localBills.length > 0 && (!serverShop.bills || serverShop.bills.length === 0)) {
-            serverShop.bills = localBills;
-            serverShop.stats.total_bills = localBills.length;
-            const rev = localBills.reduce((acc: number, b: any) => acc + (parseFloat(String(b.amount).replace(/[^\d.]/g, "")) || 0), 0);
-            serverShop.stats.total_revenue = rev;
-            serverShop.stats.formatted_revenue = `₹${rev.toLocaleString("en-IN")}`;
-          }
-        }
-        setSelectedShopDetail(serverShop);
-        setDetailLoading(false);
-        return;
-      }
-    } catch (err) {
-      console.warn("Backend inspect failed, checking offline store:", err);
-    }
-
-    // Offline shop inspection fallback
+    // Instant local load: immediately construct full shop detail without any network wait
     if (targetShop) {
-      const localBills = getStoreBills(targetShop.email);
-      const localProds = getStoreProducts(targetShop.email);
-      const localCusts = getStoreCustomers(targetShop.email);
-      const rev = localBills.reduce((acc: number, b: any) => acc + (parseFloat(String(b.amount).replace(/[^\d.]/g, "")) || 0), 0);
+      const localBills = targetShop.email ? getStoreBills(targetShop.email) : [];
+      const localProds = targetShop.email ? getStoreProducts(targetShop.email) : [];
+      const localCusts = targetShop.email ? getStoreCustomers(targetShop.email) : [];
+      const rev = localBills.reduce(
+        (acc: number, b: any) => acc + (parseFloat(String(b.amount).replace(/[^\d.]/g, "")) || 0),
+        0
+      );
 
-      setSelectedShopDetail({
+      const formattedBills = localBills.map((b: any) => ({
+        id: b.id || b.invoice,
+        invoice: b.invoice || b.invoice_number || `INV-${b.id || "001"}`,
+        customer: b.customer || "Walk-in Customer",
+        amount:
+          typeof b.amount === "string" && b.amount.startsWith("₹")
+            ? b.amount
+            : `₹${parseFloat(String(b.amount || b.total_amount || 0)).toLocaleString("en-IN")}`,
+        payment_mode: b.payment_mode || "Cash",
+        time: b.time || b.created_at_formatted || "Recent",
+        status: b.status || "Paid",
+        created_at: b.created_at,
+        created_at_formatted: b.created_at_formatted || b.time || "Recent",
+      }));
+
+      const instantDetail = {
         id: targetShop.id,
         name: targetShop.name,
         store_name: targetShop.store_name,
@@ -407,31 +401,78 @@ export default function AdminPanel() {
         created_at: targetShop.created_at || new Date().toISOString(),
         created_at_formatted: targetShop.created_at_formatted || "Recent",
         stats: {
-          total_bills: localBills.length,
-          total_revenue: rev,
-          formatted_revenue: `₹${rev.toLocaleString("en-IN")}`,
-          total_products: localProds.length,
-          total_customers: localCusts.length,
+          total_bills: localBills.length || targetShop.bills_count || 0,
+          total_revenue: rev || targetShop.total_revenue || 0,
+          formatted_revenue: `₹${(rev || targetShop.total_revenue || 0).toLocaleString("en-IN")}`,
+          total_products: localProds.length || targetShop.products_count || 0,
+          total_customers: localCusts.length || targetShop.customers_count || 0,
         },
-        bills: localBills.map((b: any) => ({
-          id: b.id || b.invoice,
-          invoice: b.invoice || b.invoice_number,
-          customer: b.customer || "Walk-in Customer",
-          amount: b.amount || `₹${b.total_amount || 0}`,
-          payment_mode: b.payment_mode || "Cash",
-          time: b.time || "Recent",
-          status: b.status || "Paid",
-          created_at: b.created_at,
-          created_at_formatted: b.time || "Recent",
-        })),
+        bills: formattedBills,
+        recent_bills: formattedBills,
         products: localProds,
         customers: localCusts,
-      });
-    } else {
+      };
+
+      // Set immediately: 0ms delay!
+      setSelectedShopDetail(instantDetail);
+      setDetailLoading(false);
+
+      // Background refresh from server (fast 1200ms timeout)
+      try {
+        const res = await axios.get(apiUrl(`/api/admin/shops/${shopId}/`), { timeout: 1200 });
+        if (res.data?.success && res.data?.shop) {
+          const serverShop = res.data.shop;
+          const serverBills = serverShop.recent_bills || serverShop.bills || [];
+
+          if (serverBills.length === 0 && formattedBills.length > 0) {
+            serverShop.recent_bills = formattedBills;
+            serverShop.bills = formattedBills;
+            serverShop.stats.total_bills = formattedBills.length;
+            serverShop.stats.total_revenue = rev;
+            serverShop.stats.formatted_revenue = `₹${rev.toLocaleString("en-IN")}`;
+          } else if (serverBills.length > 0) {
+            serverShop.recent_bills = serverBills;
+            serverShop.bills = serverBills;
+          }
+
+          if ((!serverShop.products || serverShop.products.length === 0) && localProds.length > 0) {
+            serverShop.products = localProds;
+          }
+          if ((!serverShop.customers || serverShop.customers.length === 0) && localCusts.length > 0) {
+            serverShop.customers = localCusts;
+          }
+
+          setSelectedShopDetail((prev: any) => ({
+            ...prev,
+            ...serverShop,
+          }));
+        }
+      } catch {
+        // Local details already loaded and displayed cleanly
+      }
+      return;
+    }
+
+    // Fallback if targetShop wasn't already in client state
+    setDetailLoading(true);
+    try {
+      const res = await axios.get(apiUrl(`/api/admin/shops/${shopId}/`), { timeout: 1500 });
+      if (res.data?.success && res.data?.shop) {
+        const serverShop = res.data.shop;
+        if (!serverShop.recent_bills && serverShop.bills) {
+          serverShop.recent_bills = serverShop.bills;
+        }
+        setSelectedShopDetail(serverShop);
+      } else {
+        toast.error("Could not load shop details.");
+        setSelectedShopId(null);
+      }
+    } catch {
       toast.error("Could not load shop details.");
       setSelectedShopId(null);
+    } finally {
+      setDetailLoading(false);
     }
-    setDetailLoading(false);
   };
 
   // --- Delete Shop ---

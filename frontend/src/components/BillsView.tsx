@@ -15,7 +15,7 @@ const avatarStyles: Record<string, string> = {
 };
 
 import { getStoreBills, addStoreBill, deleteStoreBill, clearAllStoreBills } from '../lib/offlineStore';
-import { openWhatsApp } from '../lib/whatsapp';
+import { openWhatsApp, shareInvoiceOnWhatsApp } from '../lib/whatsapp';
 import { downloadInvoicePdf } from '../lib/pdfGenerator';
 
 export default function BillsView() {
@@ -130,22 +130,15 @@ export default function BillsView() {
     await downloadInvoicePdf(bill, shopkeeper);
   };
 
-  const handleSendWhatsApp = (bill: any) => {
-    const cleanAmount = String(bill.amount || '0').replace('₹', '').replace(/,/g, '').trim();
-    const lines = [
-      `*Invoice: ${bill.invoice || 'N/A'}*`,
-      `Customer: ${bill.customer || 'Walk-in Customer'}`,
-      `Amount: ₹${cleanAmount}`,
-      `Time: ${bill.time || ''}`,
-      `Status: ${bill.status || 'Paid'}`,
-      `Payment: ${bill.payment_mode || 'Cash'}`,
-      ``,
-      `Thank you for shopping with us! 🙏`,
-    ];
-    toast.success("Opening WhatsApp…");
-    openWhatsApp({
+  const handleSendWhatsApp = async (bill: any) => {
+    toast.success("Preparing PDF and opening WhatsApp…");
+    await shareInvoiceOnWhatsApp({
+      bill: bill,
+      items: bill.items || [],
+      customerName: bill.customer,
+      invoiceNumber: bill.invoice,
+      shopkeeper: shopkeeper,
       phone: bill.phone || bill.customer_phone || "",
-      message: lines.join('\n'),
     });
   };
 
