@@ -98,8 +98,8 @@ export default function AdminPanel() {
   });
 
   // Login form state
-  const [loginUsername, setLoginUsername] = useState("admin");
-  const [loginPassword, setLoginPassword] = useState("admin123");
+  const [loginUsername, setLoginUsername] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
 
@@ -580,7 +580,7 @@ export default function AdminPanel() {
                 type="text"
                 value={loginUsername}
                 onChange={(e) => setLoginUsername(e.target.value)}
-                placeholder="admin"
+                placeholder="Enter admin username or email"
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
                 required
               />
@@ -595,7 +595,7 @@ export default function AdminPanel() {
                   type={showPassword ? "text" : "password"}
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="Enter admin password"
                   className="w-full bg-white/5 border border-white/10 rounded-xl pl-4 pr-11 py-3 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
                   required
                 />
@@ -609,26 +609,10 @@ export default function AdminPanel() {
               </div>
             </div>
 
-            {/* Quick Demo Pre-fill helper */}
-            <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
-              <span>Default credentials:</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginUsername("admin");
-                  setLoginPassword("admin123");
-                  toast.info("Filled: admin / admin123");
-                }}
-                className="text-violet-400 hover:text-violet-300 font-semibold underline underline-offset-2"
-              >
-                Use admin / admin123
-              </button>
-            </div>
-
             <button
               type="submit"
               disabled={loginLoading}
-              className="w-full bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold rounded-xl py-3 text-sm shadow-lg shadow-indigo-600/30 transition-all transform hover:-translate-y-0.5 disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold rounded-xl py-3 text-sm shadow-lg shadow-indigo-600/30 transition-all transform hover:-translate-y-0.5 disabled:opacity-50 mt-2"
             >
               {loginLoading ? "Verifying Access..." : "Enter Admin Portal →"}
             </button>
