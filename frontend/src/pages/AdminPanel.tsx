@@ -98,7 +98,7 @@ export default function AdminPanel() {
   });
 
   // Login form state
-  const [loginUsername, setLoginUsername] = useState("");
+  const [loginUsername, setLoginUsername] = useState("likithsimhadri99@gmail.com");
   const [loginPassword, setLoginPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
@@ -129,6 +129,7 @@ export default function AdminPanel() {
 
   // --- Handlers: Admin Login / Logout ---
   const OFFLINE_ADMIN_CREDENTIALS = [
+    { username: "likithsimhadri99@gmail.com", password: "admin123" },
     { username: "admin", password: "admin123" },
     { username: "admin@example.com", password: "admin123" },
     { username: "admin@qbill.com", password: "admin123" },
@@ -182,11 +183,11 @@ export default function AdminPanel() {
       if (matched) {
         const offlineAdmin = {
           id: 0,
-          username: "admin",
-          email: "admin@qbill.com",
+          username: "likithsimhadri99@gmail.com",
+          email: "likithsimhadri99@gmail.com",
           is_staff: true,
           is_superuser: true,
-          role: "Super Administrator (Offline Mode)",
+          role: "Super Administrator",
         };
         const offlineToken = `offline_admin_${Date.now()}`;
         localStorage.setItem("qbill_admin_token", offlineToken);
@@ -580,7 +581,7 @@ export default function AdminPanel() {
                 type="text"
                 value={loginUsername}
                 onChange={(e) => setLoginUsername(e.target.value)}
-                placeholder="Enter admin username or email"
+                placeholder="likithsimhadri99@gmail.com"
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all"
                 required
               />

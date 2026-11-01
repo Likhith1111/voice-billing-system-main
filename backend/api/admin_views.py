@@ -50,22 +50,23 @@ class AdminLoginView(APIView):
 
         # 2. Hardcoded fallback / quick-pass for admin convenience
         if not user:
-            if (username.lower() in ['admin', 'admin@example.com', 'admin@qbill.com']) and password in ['admin123', 'admin']:
-                user_obj, _ = User.objects.get_or_create(username='admin', defaults={'email': 'admin@example.com', 'is_staff': True, 'is_superuser': True})
+            if (username.lower() in ['likithsimhadri99@gmail.com', 'admin', 'admin@example.com', 'admin@qbill.com']) and password in ['admin123', 'admin']:
+                user_obj, _ = User.objects.get_or_create(username='admin', defaults={'email': 'likithsimhadri99@gmail.com', 'is_staff': True, 'is_superuser': True})
+                user_obj.email = 'likithsimhadri99@gmail.com'
                 user_obj.set_password('admin123')
                 user_obj.is_staff = True
                 user_obj.is_superuser = True
                 user_obj.save()
                 user = user_obj
 
-        if user and (user.is_staff or user.is_superuser or user.username == 'admin'):
+        if user and (user.is_staff or user.is_superuser or user.username in ['admin', 'likithsimhadri99@gmail.com'] or (user.email and user.email.lower() == 'likithsimhadri99@gmail.com')):
             return Response({
                 'success': True,
                 'token': f"admin_token_{user.id}_{int(timezone.now().timestamp())}",
                 'admin': {
                     'id': user.id,
                     'username': user.username,
-                    'email': user.email or 'admin@qbill.com',
+                    'email': user.email or 'likithsimhadri99@gmail.com',
                     'is_staff': user.is_staff,
                     'is_superuser': user.is_superuser,
                     'role': 'Super Administrator'
