@@ -679,3 +679,147 @@ export function parseVoiceBillLocally(rawText: string, email?: string): { succes
     total_amount: grandTotal,
   };
 }
+
+// ─── Platform Super Admin Offline / Hybrid Aggregation ─────────────────────────
+export function getPlatformAdminData() {
+  const shopkeepers = getStoredShopkeepers();
+  
+  // Also check if active shopkeeper in localStorage isn't in quantum_shopkeepers list
+  try {
+    const active = JSON.parse(localStorage.getItem("shopkeeper") || "null");
+    if (active && active.email) {
+      const exists = shopkeepers.some((s) => s.email.toLowerCase() === active.email.toLowerCase());
+      if (!exists) {
+        shopkeepers.unshift({
+          id: active.id || Date.now(),
+          name: active.name || "Shopkeeper",
+          store_name: active.store_name || "My Store",
+          email: active.email,
+          phone: active.phone || "",
+          address: active.address || "",
+          upi_id: active.upi_id || "",
+        });
+      }
+    }
+  } catch {}
+
+  // Also discover any stores that have bills stored under quantum_bills_*
+  if (typeof localStorage !== "undefined") {
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("quantum_bills_")) {
+          const emailPart = key.replace("quantum_bills_", "").trim();
+          if (emailPart && emailPart !== "default") {
+            const exists = shopkeepers.some((s) => s.email.toLowerCase() === emailPart.toLowerCase());
+            if (!exists) {
+              const namePart = emailPart.split("@")[0].replace(/[._]/g, " ");
+              shopkeepers.push({
+                id: Math.abs(emailPart.split("").reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0)),
+                name: namePart.charAt(0).toUpperCase() + namePart.slice(1),
+                store_name: `${namePart.charAt(0).toUpperCase() + namePart.slice(1)}'s Store`,
+                email: emailPart,
+                phone: "",
+                address: "",
+                upi_id: "",
+              });
+            }
+          }
+        }
+      }
+    } catch {}
+  }
+
+  let platformTotalRevenue = 0;
+  let platformTotalBills = 0;
+  const allActivityBills: any[] = [];
+  let totalProductsCount = 0;
+  let totalCustomersCount = 0;
+
+  const shopsList = shopkeepers.map((s) => {
+    const bills = getStoreBills(s.email);
+    const prods = getStoreProducts(s.email);
+    const custs = getStoreCustomers(s.email);
+
+    totalProductsCount += prods.length;
+    totalCustomersCount += custs.length;
+
+    let shopRev = 0;
+    bills.forEach((b: any) => {
+      const clean = String(b.amount || "0").replace(/[^\d.]/g, "");
+      const num = parseFloat(clean) || 0;
+      shopRev += num;
+
+      allActivityBills.push({
+        id: b.id || b.invoice,
+        invoice: b.invoice || b.invoice_number,
+        customer: b.customer || "Walk-in Customer",
+        amount: b.amount || `₹${num}`,
+        parsed_amount: num,
+        payment_mode: b.payment_mode || "Cash",
+        time: b.time || "Recent",
+        created_at: b.created_at || new Date().toISOString(),
+        shop_id: s.id,
+        store_name: s.store_name,
+        shopkeeper_name: s.name,
+        status: b.status || "Paid"
+      });
+    });
+
+    platformTotalRevenue += shopRev;
+    platformTotalBills += bills.length;
+
+    const latestBill = bills[0];
+    const lastActive = latestBill ? (latestBill.time || "Recently active") : "Recently registered";
+
+    return {
+      id: s.id,
+      name: s.name,
+      store_name: s.store_name,
+      email: s.email,
+      phone: s.phone || "",
+      address: s.address || "",
+      upi_id: s.upi_id || "",
+      created_at: new Date().toISOString(),
+      created_at_formatted: "Recent",
+      bills_count: bills.length,
+      total_revenue: shopRev,
+      formatted_revenue: `₹${shopRev.toLocaleString("en-IN")}`,
+      products_count: prods.length,
+      customers_count: custs.length,
+      last_active: lastActive,
+      status: (bills.length > 0 ? "Active" : prods.length > 0 ? "Catalog Ready" : "New Store") as "Active" | "Catalog Ready" | "New Store"
+    };
+  });
+
+  allActivityBills.sort((a, b) => {
+    const tA = new Date(a.created_at).getTime() || 0;
+    const tB = new Date(b.created_at).getTime() || 0;
+    return tB - tA;
+  });
+
+  const topShops = [...shopsList]
+    .filter((s) => s.bills_count > 0 || s.total_revenue > 0)
+    .sort((a, b) => b.total_revenue - a.total_revenue)
+    .slice(0, 5);
+
+  const activeShopsCount = shopsList.filter((s) => s.bills_count > 0).length;
+
+  return {
+    summary: {
+      total_shops: shopsList.length,
+      active_shops: activeShopsCount > 0 ? activeShopsCount : (shopsList.length > 0 ? 1 : 0),
+      total_platform_revenue: platformTotalRevenue,
+      formatted_platform_revenue: `₹${platformTotalRevenue.toLocaleString("en-IN")}`,
+      total_bills: platformTotalBills,
+      total_products: totalProductsCount,
+      total_customers: totalCustomersCount,
+      today_revenue: platformTotalRevenue,
+      formatted_today_revenue: `₹${platformTotalRevenue.toLocaleString("en-IN")}`,
+      today_bills_count: platformTotalBills,
+    },
+    shops: shopsList,
+    top_shops: topShops,
+    recent_activity: allActivityBills.slice(0, 20),
+  };
+}

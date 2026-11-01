@@ -47,6 +47,7 @@ import {
   ResponsiveContainer
 } from "recharts";
 import { useAuth } from "../App";
+import { getPlatformAdminData, getStoreBills, getStoreProducts, getStoreCustomers } from "../lib/offlineStore";
 
 interface Shopkeeper {
   id: number;
@@ -217,44 +218,135 @@ export default function AdminPanel() {
   // --- Fetch Admin Data ---
   const fetchAdminData = async () => {
     if (!isAdminAuthenticated) return;
+    setRefreshing(true);
+
+    // 1. Gather offline/local platform data first
+    const offlineData = getPlatformAdminData();
+
     try {
-      setRefreshing(true);
       const [overviewRes, shopsRes] = await Promise.all([
-        axios.get(apiUrl("/api/admin/overview/"), { timeout: 5000 }),
-        axios.get(apiUrl("/api/admin/shops/"), { timeout: 5000 }),
+        axios.get(apiUrl("/api/admin/overview/"), { timeout: 4000 }),
+        axios.get(apiUrl("/api/admin/shops/"), { timeout: 4000 }),
       ]);
 
-      if (overviewRes.data.success) {
-        setSummary(overviewRes.data.summary);
-        setTopShops(overviewRes.data.top_shops || []);
-        setRecentActivity(overviewRes.data.recent_activity || []);
-      }
+      const serverOverview = overviewRes.data?.success ? overviewRes.data : null;
+      const serverShops = shopsRes.data?.success && Array.isArray(shopsRes.data.shops) ? shopsRes.data.shops : [];
 
-      if (shopsRes.data.success) {
-        setShops(shopsRes.data.shops || []);
+      // 2. Merge server shops and offline registered shops by email
+      const shopMap = new Map();
+      offlineData.shops.forEach((s) => {
+        if (s.email) shopMap.set(s.email.toLowerCase(), s);
+      });
+
+      serverShops.forEach((s: any) => {
+        const key = (s.email || "").toLowerCase();
+        if (key && shopMap.has(key)) {
+          const off = shopMap.get(key);
+          const maxBills = Math.max(off.bills_count || 0, s.bills_count || 0);
+          const maxRev = Math.max(off.total_revenue || 0, s.total_revenue || 0);
+          shopMap.set(key, {
+            ...off,
+            ...s,
+            bills_count: maxBills,
+            total_revenue: maxRev,
+            formatted_revenue: s.total_revenue >= off.total_revenue ? s.formatted_revenue : off.formatted_revenue,
+            status: maxBills > 0 ? "Active" : s.status,
+          });
+        } else if (key) {
+          shopMap.set(key, s);
+        } else {
+          shopMap.set(String(s.id), s);
+        }
+      });
+
+      const mergedShops = Array.from(shopMap.values());
+
+      // 3. Merge recent activity invoices
+      const billMap = new Map();
+      offlineData.recent_activity.forEach((b) => {
+        const key = b.invoice || b.invoice_number || b.id;
+        if (key) billMap.set(key, b);
+      });
+      if (serverOverview?.recent_activity) {
+        serverOverview.recent_activity.forEach((b: any) => {
+          const key = b.invoice || b.invoice_number || b.id;
+          if (key) billMap.set(key, { ...billMap.get(key), ...b });
+        });
       }
+      const mergedActivity = Array.from(billMap.values()).sort((a: any, b: any) => {
+        const tA = new Date(a.created_at || 0).getTime() || 0;
+        const tB = new Date(b.created_at || 0).getTime() || 0;
+        return tB - tA;
+      });
+
+      // 4. Calculate unified summary totals
+      const totalRev = mergedShops.reduce((sum, s) => sum + (s.total_revenue || 0), 0);
+      const totalBills = Math.max(
+        mergedActivity.length,
+        mergedShops.reduce((sum, s) => sum + (s.bills_count || 0), 0)
+      );
+      const activeCount = mergedShops.filter((s) => (s.bills_count || 0) > 0).length;
+
+      const mergedSummary: PlatformSummary = {
+        total_shops: mergedShops.length,
+        active_shops: activeCount > 0 ? activeShopsCount(mergedShops) : (mergedShops.length > 0 ? 1 : 0),
+        total_platform_revenue: totalRev,
+        formatted_platform_revenue: `₹${totalRev.toLocaleString("en-IN")}`,
+        total_bills: totalBills,
+        total_products: Math.max(serverOverview?.summary?.total_products || 0, offlineData.summary.total_products),
+        total_customers: Math.max(serverOverview?.summary?.total_customers || 0, offlineData.summary.total_customers),
+        today_revenue: totalRev,
+        formatted_today_revenue: `₹${totalRev.toLocaleString("en-IN")}`,
+        today_bills_count: totalBills,
+      };
+
+      setSummary(mergedSummary);
+      setShops(mergedShops);
+      setRecentActivity(mergedActivity);
+      setTopShops(
+        [...mergedShops]
+          .filter((s) => s.bills_count > 0 || s.total_revenue > 0)
+          .sort((a, b) => b.total_revenue - a.total_revenue)
+          .slice(0, 5)
+      );
     } catch (err: any) {
-      const isOffline = !err.response;
-      if (isOffline) {
-        // Backend not running — show empty state with a helpful banner (no toast spam)
-        console.warn("Admin: Backend unreachable, showing offline state.");
-        setSummary(null);
-        setShops([]);
-        setTopShops([]);
-        setRecentActivity([]);
-      } else {
-        toast.error("Error fetching platform data from server.");
-      }
+      console.warn("Admin: Backend unreachable, seamlessly using offline store data:", err);
+      // Fallback: Use offline data!
+      setSummary(offlineData.summary);
+      setShops(offlineData.shops);
+      setTopShops(offlineData.top_shops);
+      setRecentActivity(offlineData.recent_activity);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
+  const activeShopsCount = (shopsList: any[]) => {
+    return shopsList.filter((s) => (s.bills_count || 0) > 0).length;
+  };
 
   useEffect(() => {
     if (isAdminAuthenticated) {
       fetchAdminData();
+
+      // Listen for new bills created in any tab or store
+      const handleBillAdded = () => fetchAdminData();
+      const handleStorageChange = (e: StorageEvent) => {
+        if (e.key && (e.key.startsWith("quantum_") || e.key === "shopkeeper")) {
+          fetchAdminData();
+        }
+      };
+
+      window.addEventListener("qbill-bill-added", handleBillAdded);
+      window.addEventListener("storage", handleStorageChange);
+      const interval = setInterval(fetchAdminData, 6000);
+
+      return () => {
+        window.removeEventListener("qbill-bill-added", handleBillAdded);
+        window.removeEventListener("storage", handleStorageChange);
+        clearInterval(interval);
+      };
     }
   }, [isAdminAuthenticated]);
 
@@ -262,17 +354,75 @@ export default function AdminPanel() {
   const handleInspectShop = async (shopId: number) => {
     setSelectedShopId(shopId);
     setDetailLoading(true);
+
+    const targetShop = shops.find((s) => s.id === shopId);
+
     try {
       const res = await axios.get(apiUrl(`/api/admin/shops/${shopId}/`));
-      if (res.data.success) {
-        setSelectedShopDetail(res.data.shop);
+      if (res.data.success && res.data.shop) {
+        // If server bills are empty but local bills exist, merge
+        const serverShop = res.data.shop;
+        if (targetShop?.email) {
+          const localBills = getStoreBills(targetShop.email);
+          if (localBills.length > 0 && (!serverShop.bills || serverShop.bills.length === 0)) {
+            serverShop.bills = localBills;
+            serverShop.stats.total_bills = localBills.length;
+            const rev = localBills.reduce((acc: number, b: any) => acc + (parseFloat(String(b.amount).replace(/[^\d.]/g, "")) || 0), 0);
+            serverShop.stats.total_revenue = rev;
+            serverShop.stats.formatted_revenue = `₹${rev.toLocaleString("en-IN")}`;
+          }
+        }
+        setSelectedShopDetail(serverShop);
+        setDetailLoading(false);
+        return;
       }
     } catch (err) {
+      console.warn("Backend inspect failed, checking offline store:", err);
+    }
+
+    // Offline shop inspection fallback
+    if (targetShop) {
+      const localBills = getStoreBills(targetShop.email);
+      const localProds = getStoreProducts(targetShop.email);
+      const localCusts = getStoreCustomers(targetShop.email);
+      const rev = localBills.reduce((acc: number, b: any) => acc + (parseFloat(String(b.amount).replace(/[^\d.]/g, "")) || 0), 0);
+
+      setSelectedShopDetail({
+        id: targetShop.id,
+        name: targetShop.name,
+        store_name: targetShop.store_name,
+        email: targetShop.email,
+        phone: targetShop.phone || "",
+        address: targetShop.address || "",
+        upi_id: targetShop.upi_id || "",
+        created_at: targetShop.created_at || new Date().toISOString(),
+        created_at_formatted: targetShop.created_at_formatted || "Recent",
+        stats: {
+          total_bills: localBills.length,
+          total_revenue: rev,
+          formatted_revenue: `₹${rev.toLocaleString("en-IN")}`,
+          total_products: localProds.length,
+          total_customers: localCusts.length,
+        },
+        bills: localBills.map((b: any) => ({
+          id: b.id || b.invoice,
+          invoice: b.invoice || b.invoice_number,
+          customer: b.customer || "Walk-in Customer",
+          amount: b.amount || `₹${b.total_amount || 0}`,
+          payment_mode: b.payment_mode || "Cash",
+          time: b.time || "Recent",
+          status: b.status || "Paid",
+          created_at: b.created_at,
+          created_at_formatted: b.time || "Recent",
+        })),
+        products: localProds,
+        customers: localCusts,
+      });
+    } else {
       toast.error("Could not load shop details.");
       setSelectedShopId(null);
-    } finally {
-      setDetailLoading(false);
     }
+    setDetailLoading(false);
   };
 
   // --- Delete Shop ---
