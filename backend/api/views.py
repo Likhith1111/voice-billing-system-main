@@ -308,10 +308,39 @@ class DashboardDataView(APIView):
             'accuracy': "99%" if total_bills > 0 else "100%"
         }
 
+        # Dynamically rank top selling products by actual sales
+        products_list = list(products)
+        def get_sold_num(p):
+            try:
+                raw_sold = str(p.sold or '0').lower().replace('sold', '').replace(',', '').strip()
+                if raw_sold.endswith('k'):
+                    return int(float(raw_sold[:-1]) * 1000)
+                return int(raw_sold) if raw_sold else 0
+            except:
+                return 0
+
+        products_list.sort(key=get_sold_num, reverse=True)
+        max_sold = max([get_sold_num(p) for p in products_list] + [1])
+        colors = ["bg-blue-500", "bg-amber-500", "bg-yellow-500", "bg-orange-500", "bg-emerald-500", "bg-violet-500", "bg-rose-500"]
+
+        top_products_data = []
+        for idx, p in enumerate(products_list[:5]):
+            s_count = get_sold_num(p)
+            w = f"{max(15, int((s_count / max_sold) * 100))}%" if s_count > 0 else "0%"
+            top_products_data.append({
+                "id": p.id,
+                "name": p.name,
+                "value": p.value,
+                "sold": f"{s_count} sold",
+                "width": w,
+                "color": colors[idx % len(colors)],
+                "barcode": p.barcode or ""
+            })
+
         return Response({
             'summaryStats': summaryStats,
             'recentCustomers': CustomerSerializer(customers[:5], many=True).data,
-            'topProducts': ProductSerializer(products[:5], many=True).data,
+            'topProducts': top_products_data,
             'recentBills': BillSerializer(bills[:5], many=True).data,
             'salesByHour': hourly_sales_dynamic,
             'revenueTrend': revenue_trend_dynamic,

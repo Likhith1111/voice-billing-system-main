@@ -286,6 +286,33 @@ export function addStoreBill(bill: any, email?: string): any {
   const storeEmail = (email || "default").toLowerCase().trim();
   localStorage.setItem(`quantum_bills_${storeEmail}`, JSON.stringify(bills));
 
+  // Dynamically update product sold counts in store catalog
+  if (Array.isArray(newBill.items) && newBill.items.length > 0) {
+    try {
+      const storeProducts = getStoreProducts(storeEmail);
+      let catalogChanged = false;
+      for (const item of newBill.items) {
+        const itemPName = (item.product || item.name || "").trim().toLowerCase();
+        const itemQty = Number(item.quantity || item.qty || 1);
+        if (itemPName) {
+          const match = storeProducts.find((p) => 
+            p.name.toLowerCase().includes(itemPName) || itemPName.includes(p.name.toLowerCase())
+          );
+          if (match) {
+            const curSold = parseInt(String(match.sold || "0").replace(/[^0-9]/g, ""), 10) || 0;
+            match.sold = `${curSold + itemQty} sold`;
+            catalogChanged = true;
+          }
+        }
+      }
+      if (catalogChanged) {
+        saveStoreProducts(storeProducts, storeEmail);
+      }
+    } catch (e) {
+      console.warn("Could not update catalog sold counts:", e);
+    }
+  }
+
   // Dispatch a custom event so same-tab listeners (like the dashboard) can react immediately
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("qbill-bill-added", { detail: { email: storeEmail } }));
@@ -326,6 +353,77 @@ export function clearAllStoreBills(email?: string): void {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("qbill-bill-added", { detail: { email: storeEmail } }));
   }
+}
+
+// Helper to calculate live top-selling products from actual store bills
+export function computeTopSellingProducts(bills: any[], catalogProducts: ProductItem[] = []): ProductItem[] {
+  const products = catalogProducts && catalogProducts.length > 0 ? [...catalogProducts] : DEFAULT_DAILY_PRODUCTS;
+  
+  // Aggregate sales from all bills
+  const salesMap: Record<string, number> = {};
+
+  for (const bill of bills) {
+    let items = bill.items;
+    if (typeof items === "string") {
+      try {
+        items = JSON.parse(items);
+      } catch {}
+    }
+    if (Array.isArray(items) && items.length > 0) {
+      for (const item of items) {
+        const pName = (item.product || item.name || "").trim().toLowerCase();
+        const qty = Number(item.quantity || item.qty || 1);
+        if (pName) {
+          salesMap[pName] = (salesMap[pName] || 0) + (isNaN(qty) ? 1 : qty);
+        }
+      }
+    }
+  }
+
+  const colors = [
+    "bg-blue-500",
+    "bg-amber-500",
+    "bg-yellow-500",
+    "bg-orange-500",
+    "bg-emerald-500",
+    "bg-violet-500",
+    "bg-rose-500",
+    "bg-cyan-500",
+  ];
+
+  const ranked = products.map((prod, idx) => {
+    const prodNameLower = prod.name.trim().toLowerCase();
+    
+    // Sum matching sales from bills
+    let soldFromBills = 0;
+    for (const [sName, qty] of Object.entries(salesMap)) {
+      if (sName.includes(prodNameLower) || prodNameLower.includes(sName)) {
+        soldFromBills += qty;
+      }
+    }
+
+    // Also parse existing sold count from catalog if present
+    const existingSold = parseInt(String(prod.sold || "0").replace(/[^0-9]/g, ""), 10) || 0;
+    const finalSold = Math.max(soldFromBills, existingSold);
+
+    return {
+      ...prod,
+      soldCount: finalSold,
+      sold: `${finalSold} sold`,
+      color: prod.color || colors[idx % colors.length],
+    };
+  });
+
+  // Sort by highest sold count first
+  ranked.sort((a, b) => b.soldCount - a.soldCount);
+
+  const maxSold = Math.max(1, ...ranked.map((p) => p.soldCount));
+
+  return ranked.slice(0, 5).map((p, idx) => ({
+    ...p,
+    color: colors[idx % colors.length],
+    width: p.soldCount > 0 ? `${Math.max(15, Math.round((p.soldCount / maxSold) * 100))}%` : "0%",
+  }));
 }
 
 // Calculate dashboard analytics from bills
@@ -414,7 +512,9 @@ export function computeDashboardStats(bills: any[], products: any[] = [], custom
     accuracy: "99%",
   };
 
-  return { summaryStats, salesByHour, revenueTrend };
+  const topProducts = computeTopSellingProducts(bills, products);
+
+  return { summaryStats, salesByHour, revenueTrend, topProducts };
 }
 
 

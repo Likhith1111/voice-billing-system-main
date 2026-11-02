@@ -201,7 +201,7 @@ export default function Home() {
         setRevenueTrend(data.revenueTrend?.length && !useComputed ? data.revenueTrend : computed.revenueTrend);
         setRecentBills(mergedBills.length > 0 ? mergedBills : serverBills);
         setLowStock(data.lowStock || []);
-        setTopProducts(data.topProducts?.length ? data.topProducts : localProds.slice(0, 5));
+        setTopProducts(computed.topProducts?.length ? computed.topProducts : (data.topProducts?.length ? data.topProducts : localProds.slice(0, 5)));
         setRecentCustomers(data.recentCustomers?.length ? data.recentCustomers : localCusts.slice(0, 5));
         setNotifications(data.notifications || []);
         setLoading(false);
@@ -215,7 +215,7 @@ export default function Home() {
         setRevenueTrend(computed.revenueTrend);
         setRecentBills(localBills);
         setLowStock([]);
-        setTopProducts(localProds.slice(0, 5));
+        setTopProducts(computed.topProducts);
         setRecentCustomers(localCusts.slice(0, 5));
         setNotifications([
           {

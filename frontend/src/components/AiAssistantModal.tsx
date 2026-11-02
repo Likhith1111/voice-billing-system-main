@@ -325,3 +325,4 @@ export default function AiAssistantModal({ isOpen, onClose }: AiAssistantModalPr
     </div>
   );
 }
+
