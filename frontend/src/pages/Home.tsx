@@ -6,6 +6,8 @@ import BillsView from "../components/BillsView";
 import VoiceBilling from "../components/VoiceBilling";
 import ImageBilling from "../components/ImageBilling";
 import BarcodeBilling from "../components/BarcodeBilling";
+import KhataView from "../components/KhataView";
+import AiAssistantModal from "../components/AiAssistantModal";
 import axios from "axios";
 import { apiUrl } from "../config/api";
 import { getStoreProducts, getStoreBills, getStoreCustomers, computeDashboardStats } from "../lib/offlineStore";
@@ -39,6 +41,7 @@ import {
   Camera,
   ScanLine,
   ShieldCheck,
+  BookOpen,
 } from "lucide-react";
 import {
   Area,
@@ -64,6 +67,7 @@ const navGroups = [
       { label: "Voice Billing", icon: Mic2, badge: "LIVE" },
       { label: "Image Billing", icon: Camera, badge: "NEW" },
       { label: "Barcode Billing", icon: ScanLine },
+      { label: "Digital Khata", icon: BookOpen, badge: "UDHAR" },
       { label: "Products", icon: Package },
       { label: "Customers", icon: Users },
     ],
@@ -134,6 +138,7 @@ export default function Home() {
   const { shopkeeper, logout } = useAuth();
   const [now, setNow] = useState(() => new Date());
   const [activeNav, setActiveNav] = useState("Dashboard");
+  const [showAiAssistant, setShowAiAssistant] = useState(false);
   const [search, setSearch] = useState("");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -374,6 +379,16 @@ export default function Home() {
             </div>}
           </div>
           <div className="ml-auto flex items-center gap-2 sm:gap-4">
+            {/* Store AI Voice Assistant Quick Trigger */}
+            <button
+              onClick={() => setShowAiAssistant(true)}
+              className="flex items-center gap-1.5 rounded-xl border border-violet-200 bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-700 px-3 py-2 text-xs font-bold text-white shadow-sm shadow-violet-500/20 transition hover:brightness-110 active:scale-95"
+              title="Ask AI Store Assistant"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-amber-300 animate-spin" style={{ animationDuration: "3s" }} />
+              <span className="hidden sm:inline">Ask AI Assistant</span>
+              <span className="inline sm:hidden">AI</span>
+            </button>
             <div className="relative">
               <button 
                 onClick={() => setNotificationsOpen(!notificationsOpen)} 
@@ -442,6 +457,7 @@ export default function Home() {
           {activeNav === "Voice Billing" && <VoiceBilling />}
           {activeNav === "Image Billing" && <ImageBilling />}
           {activeNav === "Barcode Billing" && <BarcodeBilling />}
+          {activeNav === "Digital Khata" && <KhataView />}
           {activeNav === "Dashboard" && (
             <>
               {/* Mobile Hero Sales Card */}
@@ -771,6 +787,12 @@ export default function Home() {
           <span className="text-[10px] mt-0.5">Bills</span>
         </button>
       </nav>
+
+      {/* AI Voice Business Assistant Modal */}
+      <AiAssistantModal
+        isOpen={showAiAssistant}
+        onClose={() => setShowAiAssistant(false)}
+      />
     </div>
   );
 }

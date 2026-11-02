@@ -6,6 +6,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Sparkles,
+  BookOpen,
 } from "lucide-react";
 
 export type PaymentMode = "Cash" | "UPI" | "Card" | "Credit";
@@ -33,7 +34,7 @@ export default function PaymentModeModal({
   onClose,
   onSelectPaymentMode,
 }: PaymentModeModalProps) {
-  const [selectedMode, setSelectedMode] = useState<"Cash" | "UPI">("Cash");
+  const [selectedMode, setSelectedMode] = useState<PaymentMode>("Cash");
   const [cashReceived, setCashReceived] = useState<number>(amount);
 
   const changeDue = Math.max(0, cashReceived - amount);
@@ -50,6 +51,8 @@ export default function PaymentModeModal({
       });
     } else if (selectedMode === "UPI") {
       onSelectPaymentMode("UPI", "Paid");
+    } else if (selectedMode === "Credit") {
+      onSelectPaymentMode("Credit", "Pending");
     }
   };
 
@@ -91,70 +94,96 @@ export default function PaymentModeModal({
             Choose Payment Mode:
           </p>
 
-          {/* Payment Methods Grid - Cash and UPI */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Payment Methods Grid - Cash, UPI, and Udhar / Khata */}
+          <div className="grid grid-cols-3 gap-2">
             {/* 1. Cash */}
             <button
               type="button"
               onClick={() => setSelectedMode("Cash")}
-              className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
+              className={`flex flex-col items-start p-2.5 rounded-xl border-2 text-left transition-all ${
                 selectedMode === "Cash"
                   ? "border-emerald-500 bg-emerald-50/70 shadow-sm"
                   : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
               }`}
             >
-              <div
-                className={`p-2.5 rounded-xl shrink-0 ${
-                  selectedMode === "Cash"
-                    ? "bg-emerald-500 text-white"
-                    : "bg-slate-100 text-slate-600"
-                }`}
-              >
-                <Banknote className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900 text-sm">Cash</span>
-                  {selectedMode === "Cash" && (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  )}
+              <div className="flex items-center justify-between w-full mb-1">
+                <div
+                  className={`p-1.5 rounded-lg shrink-0 ${
+                    selectedMode === "Cash"
+                      ? "bg-emerald-500 text-white"
+                      : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  <Banknote className="h-4 w-4" />
                 </div>
-                <span className="text-[11px] text-slate-500 block truncate">
-                  Physical currency
-                </span>
+                {selectedMode === "Cash" && (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                )}
               </div>
+              <span className="font-bold text-slate-900 text-xs">Cash</span>
+              <span className="text-[10px] text-slate-400 block truncate">
+                Physical currency
+              </span>
             </button>
 
             {/* 2. UPI / QR */}
             <button
               type="button"
               onClick={() => setSelectedMode("UPI")}
-              className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
+              className={`flex flex-col items-start p-2.5 rounded-xl border-2 text-left transition-all ${
                 selectedMode === "UPI"
                   ? "border-violet-600 bg-violet-50/70 shadow-sm"
                   : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
               }`}
             >
-              <div
-                className={`p-2.5 rounded-xl shrink-0 ${
-                  selectedMode === "UPI"
-                    ? "bg-violet-600 text-white"
-                    : "bg-slate-100 text-slate-600"
-                }`}
-              >
-                <QrCode className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900 text-sm">UPI / QR</span>
-                  {selectedMode === "UPI" && (
-                    <CheckCircle2 className="h-4 w-4 text-violet-600 shrink-0" />
-                  )}
+              <div className="flex items-center justify-between w-full mb-1">
+                <div
+                  className={`p-1.5 rounded-lg shrink-0 ${
+                    selectedMode === "UPI"
+                      ? "bg-violet-600 text-white"
+                      : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  <QrCode className="h-4 w-4" />
                 </div>
-                <span className="text-[11px] text-slate-500 block truncate">
-                  GPay, PhonePe, Paytm
-                </span>
+                {selectedMode === "UPI" && (
+                  <CheckCircle2 className="h-4 w-4 text-violet-600 shrink-0" />
+                )}
               </div>
+              <span className="font-bold text-slate-900 text-xs">UPI / QR</span>
+              <span className="text-[10px] text-slate-400 block truncate">
+                GPay, PhonePe
+              </span>
+            </button>
+
+            {/* 3. Udhar / Khata */}
+            <button
+              type="button"
+              onClick={() => setSelectedMode("Credit")}
+              className={`flex flex-col items-start p-2.5 rounded-xl border-2 text-left transition-all ${
+                selectedMode === "Credit"
+                  ? "border-amber-500 bg-amber-50/70 shadow-sm"
+                  : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+              }`}
+            >
+              <div className="flex items-center justify-between w-full mb-1">
+                <div
+                  className={`p-1.5 rounded-lg shrink-0 ${
+                    selectedMode === "Credit"
+                      ? "bg-amber-500 text-white"
+                      : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  <BookOpen className="h-4 w-4" />
+                </div>
+                {selectedMode === "Credit" && (
+                  <CheckCircle2 className="h-4 w-4 text-amber-600 shrink-0" />
+                )}
+              </div>
+              <span className="font-bold text-slate-900 text-xs">Udhar / Khata</span>
+              <span className="text-[10px] text-slate-400 block truncate">
+                Pay later credit
+              </span>
             </button>
           </div>
 
@@ -221,6 +250,17 @@ export default function PaymentModeModal({
               </p>
             </div>
           )}
+
+          {selectedMode === "Credit" && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3.5 space-y-1.5">
+              <div className="flex items-center gap-2 text-amber-900 font-bold text-xs uppercase tracking-wider">
+                <BookOpen className="h-4 w-4 text-amber-600" /> Digital Khata Book Entry
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                This bill of <span className="font-bold text-slate-900">₹{amount}</span> will be added as <span className="font-bold text-amber-700">Udhar / Credit</span> in the customer's Khata account. You can send WhatsApp payment reminders anytime with 1 click.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Compact Footer Actions */}
@@ -238,11 +278,17 @@ export default function PaymentModeModal({
             className={`flex-[2] flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-bold text-white shadow-md transition ${
               selectedMode === "Cash"
                 ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
+                : selectedMode === "Credit"
+                ? "bg-amber-600 hover:bg-amber-700 shadow-amber-600/20"
                 : "bg-violet-600 hover:bg-violet-700 shadow-violet-600/20"
             }`}
           >
             <span>
-              {selectedMode === "Cash" ? `Confirm Cash (₹${amount})` : "Open UPI QR Code"}
+              {selectedMode === "Cash"
+                ? `Confirm Cash (₹${amount})`
+                : selectedMode === "Credit"
+                ? `Record as Udhar (₹${amount})`
+                : "Open UPI QR Code"}
             </span>
             <ArrowRight className="h-3.5 w-3.5" />
           </button>

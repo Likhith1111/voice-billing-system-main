@@ -7,7 +7,7 @@ from qiskit.primitives import StatevectorSampler as Sampler
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import Customer, Product, Bill, HourlySales, RevenueTrend, ShopkeeperProfile, Notification
+from .models import Customer, Product, Bill, HourlySales, RevenueTrend, ShopkeeperProfile, Notification, KhataEntry
 from .serializers import CustomerSerializer, ProductSerializer, BillSerializer, HourlySalesSerializer, RevenueTrendSerializer
 from rest_framework import serializers
 from datetime import datetime
@@ -1053,4 +1053,174 @@ class SendWhatsAppPdfView(APIView):
                 "success": False,
                 "error": result.get("error", "Failed to send WhatsApp document"),
             }, status=500)
+
+
+class KhataView(APIView):
+    def get(self, request):
+        shopkeeper = get_current_shopkeeper(request)
+        if not shopkeeper:
+            shopkeeper = ShopkeeperProfile.objects.first()
+
+        entries_qs = KhataEntry.objects.filter(shopkeeper=shopkeeper) if shopkeeper else KhataEntry.objects.all()
+
+        total_given = sum(float(e.amount) for e in entries_qs.filter(entry_type='GIVEN'))
+        total_received = sum(float(e.amount) for e in entries_qs.filter(entry_type='RECEIVED'))
+        net_pending = max(0.0, float(total_given - total_received))
+
+        customer_map = {}
+        for e in entries_qs:
+            phone = e.customer_phone or "unknown"
+            if phone not in customer_map:
+                customer_map[phone] = {
+                    "name": e.customer_name,
+                    "phone": phone,
+                    "total_given": 0.0,
+                    "total_received": 0.0,
+                    "balance": 0.0,
+                    "last_entry": e.created_at.isoformat() if e.created_at else None,
+                    "entries": []
+                }
+            amt = float(e.amount)
+            if e.entry_type == 'GIVEN':
+                customer_map[phone]["total_given"] += amt
+                customer_map[phone]["balance"] += amt
+            else:
+                customer_map[phone]["total_received"] += amt
+                customer_map[phone]["balance"] -= amt
+
+            customer_map[phone]["entries"].append({
+                "id": e.id,
+                "amount": float(e.amount),
+                "entry_type": e.entry_type,
+                "note": e.note,
+                "bill_invoice": e.bill_invoice,
+                "created_at": e.created_at.isoformat() if e.created_at else None
+            })
+
+        customers_list = list(customer_map.values())
+        debtors_count = len([c for c in customers_list if c["balance"] > 0])
+
+        return Response({
+            "success": True,
+            "total_pending": net_pending,
+            "total_recovered": float(total_received),
+            "debtors_count": debtors_count,
+            "customers": customers_list,
+            "recent_entries": [
+                {
+                    "id": e.id,
+                    "customer_name": e.customer_name,
+                    "customer_phone": e.customer_phone,
+                    "amount": float(e.amount),
+                    "entry_type": e.entry_type,
+                    "note": e.note,
+                    "bill_invoice": e.bill_invoice,
+                    "created_at": e.created_at.isoformat() if e.created_at else None
+                } for e in entries_qs[:30]
+            ]
+        })
+
+    def post(self, request):
+        shopkeeper = get_current_shopkeeper(request)
+        if not shopkeeper:
+            shopkeeper = ShopkeeperProfile.objects.first()
+
+        customer_name = request.data.get('customer_name', 'Customer')
+        customer_phone = request.data.get('customer_phone', '')
+        try:
+            amount = float(request.data.get('amount', 0))
+        except (ValueError, TypeError):
+            return Response({"success": False, "error": "Invalid amount"}, status=400)
+
+        entry_type = request.data.get('entry_type', 'GIVEN')  # GIVEN or RECEIVED
+        note = request.data.get('note', '')
+        bill_invoice = request.data.get('bill_invoice', '')
+
+        if amount <= 0:
+            return Response({"success": False, "error": "Amount must be greater than 0"}, status=400)
+
+        entry = KhataEntry.objects.create(
+            shopkeeper=shopkeeper,
+            customer_name=customer_name,
+            customer_phone=customer_phone,
+            amount=amount,
+            entry_type=entry_type,
+            note=note,
+            bill_invoice=bill_invoice
+        )
+
+        if shopkeeper and customer_phone:
+            cust = Customer.objects.filter(shopkeeper=shopkeeper, phone=customer_phone).first()
+            if cust:
+                if entry_type == 'GIVEN':
+                    cust.credit_balance = float(cust.credit_balance) + amount
+                else:
+                    cust.credit_balance = max(0.0, float(cust.credit_balance) - amount)
+                cust.save()
+
+        return Response({
+            "success": True,
+            "message": f"Recorded ₹{amount} {entry_type} for {customer_name}",
+            "entry_id": entry.id
+        })
+
+
+class AssistantQueryView(APIView):
+    def post(self, request):
+        query = request.data.get("query", "").strip()
+        shopkeeper = get_current_shopkeeper(request) or ShopkeeperProfile.objects.first()
+
+        today_bills = Bill.objects.filter(shopkeeper=shopkeeper) if shopkeeper else Bill.objects.all()
+        total_sales = 0.0
+        bills_count = today_bills.count()
+        for b in today_bills:
+            try:
+                amt_str = b.amount.replace('₹', '').replace(',', '').strip()
+                total_sales += float(amt_str)
+            except:
+                pass
+
+        khata_entries = KhataEntry.objects.filter(shopkeeper=shopkeeper) if shopkeeper else KhataEntry.objects.all()
+        total_given = sum(float(e.amount) for e in khata_entries.filter(entry_type='GIVEN'))
+        total_received = sum(float(e.amount) for e in khata_entries.filter(entry_type='RECEIVED'))
+        pending_udhar = max(0.0, float(total_given - total_received))
+
+        products_count = Product.objects.filter(shopkeeper=shopkeeper).count() if shopkeeper else Product.objects.count()
+        customers_count = Customer.objects.filter(shopkeeper=shopkeeper).count() if shopkeeper else Customer.objects.count()
+
+        q_lower = query.lower()
+        spoken_response = ""
+        category = "general"
+
+        if any(w in q_lower for w in ["sale", "collection", "today", "total", "kamai", "aaj"]):
+            category = "sales"
+            spoken_response = f"Today's total collection is ₹{int(total_sales):,}, with a total of {bills_count} bills generated."
+        elif any(w in q_lower for w in ["udhar", "khata", "credit", "baki", "pending"]):
+            category = "khata"
+            spoken_response = f"You have ₹{int(pending_udhar):,} total pending in Udhar across customer accounts."
+        elif any(w in q_lower for w in ["product", "item", "stock", "bika", "selling"]):
+            category = "products"
+            top_product = Product.objects.filter(shopkeeper=shopkeeper).order_by('-sold').first() if shopkeeper else Product.objects.order_by('-sold').first()
+            p_name = top_product.name if top_product else "daily grocery items"
+            spoken_response = f"You have {products_count} active grocery items in your catalog. Top selling product is {p_name}."
+        elif any(w in q_lower for w in ["customer", "grahak"]):
+            category = "customers"
+            spoken_response = f"You have {customers_count} registered customers in your store system."
+        else:
+            category = "summary"
+            spoken_response = f"Store Summary: Today's sales are ₹{int(total_sales):,} across {bills_count} bills, with ₹{int(pending_udhar):,} in pending Udhar."
+
+        return Response({
+            "success": True,
+            "query": query,
+            "spoken_response": spoken_response,
+            "category": category,
+            "metrics": {
+                "today_sales": total_sales,
+                "bills_count": bills_count,
+                "pending_udhar": pending_udhar,
+                "products_count": products_count,
+                "customers_count": customers_count,
+            }
+        })
 

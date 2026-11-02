@@ -8,7 +8,7 @@ import UpiPaymentModal from "./UpiPaymentModal";
 import PaymentModeModal, { type PaymentMode } from "./PaymentModeModal";
 import WhatsAppModal from "./WhatsAppModal";
 import { apiUrl } from "../config/api";
-import { parseVoiceBillLocally, addStoreBill, getStoreCustomers, addStoreCustomer, containsNonGrocery } from "../lib/offlineStore";
+import { parseVoiceBillLocally, addStoreBill, getStoreCustomers, addStoreCustomer, containsNonGrocery, recordKhataTransaction } from "../lib/offlineStore";
 import { downloadInvoicePdf } from "../lib/pdfGenerator";
 
 const speakAlert = (message: string) => {
@@ -395,6 +395,22 @@ export default function VoiceBilling() {
       } catch (err) {
           console.warn("Backend offline, saving bill locally:", err);
           finalSavedBill = addStoreBill(billRecord, shopkeeper?.email);
+      }
+
+      // Automatically log to Digital Khata if payment mode is Credit / Udhar
+      if (payment_mode === "Credit") {
+          try {
+              recordKhataTransaction({
+                  customerName: customerNameToSave,
+                  customerPhone: currentPhone,
+                  amount: grandTotal,
+                  entryType: "GIVEN",
+                  note: `Voice Bill ${invoiceNumber}`,
+                  billInvoice: invoiceNumber,
+              }, shopkeeper?.email);
+          } catch (khataErr) {
+              console.warn("Khata record notice:", khataErr);
+          }
       }
 
       // Auto download / generate PDF

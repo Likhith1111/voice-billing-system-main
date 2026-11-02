@@ -457,6 +457,205 @@ export function addStoreCustomer(customer: any, email?: string): any {
   return newCustomer;
 }
 
+// Digital Khata (Udhar Ledger) Offline Helpers
+export interface KhataEntry {
+  id: string | number;
+  customerName: string;
+  customerPhone: string;
+  amount: number;
+  entryType: 'GIVEN' | 'RECEIVED'; // GIVEN = Udhar given, RECEIVED = Payment collected
+  note?: string;
+  billInvoice?: string;
+  date: string;
+}
+
+export const DEFAULT_KHATA_ENTRIES: KhataEntry[] = [
+  {
+    id: 1,
+    customerName: "Ramesh Sharma",
+    customerPhone: "9876543210",
+    amount: 450,
+    entryType: "GIVEN",
+    note: "Grocery items & pulses",
+    billInvoice: "INV-5120",
+    date: new Date(Date.now() - 86400000 * 2).toISOString(),
+  },
+  {
+    id: 2,
+    customerName: "Priya Patel",
+    customerPhone: "9812345678",
+    amount: 1200,
+    entryType: "GIVEN",
+    note: "Monthly rations & oil",
+    billInvoice: "INV-5188",
+    date: new Date(Date.now() - 86400000 * 1).toISOString(),
+  },
+  {
+    id: 3,
+    customerName: "Ramesh Sharma",
+    customerPhone: "9876543210",
+    amount: 200,
+    entryType: "RECEIVED",
+    note: "Cash partial payment",
+    date: new Date(Date.now() - 86400000 * 1).toISOString(),
+  }
+];
+
+export function getStoreKhata(email?: string): KhataEntry[] {
+  const storeEmail = (email || "default").toLowerCase();
+  const key = `quantum_khata_${storeEmail}`;
+  const stored = localStorage.getItem(key);
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch {}
+  }
+  return DEFAULT_KHATA_ENTRIES;
+}
+
+export function saveStoreKhata(entries: KhataEntry[], email?: string) {
+  const storeEmail = (email || "default").toLowerCase();
+  const key = `quantum_khata_${storeEmail}`;
+  localStorage.setItem(key, JSON.stringify(entries));
+}
+
+export function recordKhataTransaction(entry: {
+  customerName: string;
+  customerPhone: string;
+  amount: number;
+  entryType: 'GIVEN' | 'RECEIVED';
+  note?: string;
+  billInvoice?: string;
+}, email?: string): KhataEntry {
+  const list = getStoreKhata(email);
+  const newEntry: KhataEntry = {
+    id: Date.now(),
+    customerName: entry.customerName.trim() || "Customer",
+    customerPhone: entry.customerPhone.trim(),
+    amount: Math.abs(entry.amount),
+    entryType: entry.entryType,
+    note: entry.note || "",
+    billInvoice: entry.billInvoice || "",
+    date: new Date().toISOString(),
+  };
+
+  const updated = [newEntry, ...list];
+  saveStoreKhata(updated, email);
+
+  if (entry.customerPhone) {
+    addStoreCustomer({
+      name: entry.customerName,
+      phone: entry.customerPhone,
+    }, email);
+  }
+
+  return newEntry;
+}
+
+export function getStoreKhataSummary(email?: string) {
+  const entries = getStoreKhata(email);
+  const customerMap: Record<string, {
+    customerName: string;
+    customerPhone: string;
+    balance: number;
+    totalGiven: number;
+    totalReceived: number;
+    lastDate: string;
+    entries: KhataEntry[];
+  }> = {};
+
+  let totalGiven = 0;
+  let totalReceived = 0;
+
+  for (const e of entries) {
+    const phone = e.customerPhone || e.customerName || "unknown";
+    if (!customerMap[phone]) {
+      customerMap[phone] = {
+        customerName: e.customerName,
+        customerPhone: e.customerPhone,
+        balance: 0,
+        totalGiven: 0,
+        totalReceived: 0,
+        lastDate: e.date,
+        entries: [],
+      };
+    }
+
+    if (e.entryType === 'GIVEN') {
+      customerMap[phone].balance += e.amount;
+      customerMap[phone].totalGiven += e.amount;
+      totalGiven += e.amount;
+    } else {
+      customerMap[phone].balance -= e.amount;
+      customerMap[phone].totalReceived += e.amount;
+      totalReceived += e.amount;
+    }
+    customerMap[phone].entries.push(e);
+  }
+
+  const customers = Object.values(customerMap);
+  const totalPending = Math.max(0, totalGiven - totalReceived);
+  const debtorsCount = customers.filter(c => c.balance > 0).length;
+
+  return {
+    totalPending,
+    totalRecovered: totalReceived,
+    debtorsCount,
+    customers,
+    recentEntries: entries.slice(0, 50),
+  };
+}
+
+export function queryStoreAssistantLocally(query: string, email?: string) {
+  const bills = getStoreBills(email);
+  const khata = getStoreKhataSummary(email);
+  const products = getStoreProducts(email);
+  const customers = getStoreCustomers(email);
+
+  let totalSales = 0;
+  for (const b of bills) {
+    const amt = parseFloat(String(b.amount || "").replace(/[^0-9.]/g, "")) || 0;
+    totalSales += amt;
+  }
+
+  const q = (query || "").toLowerCase();
+  let spoken = "";
+  let category = "general";
+
+  if (q.includes("sale") || q.includes("collection") || q.includes("today") || q.includes("aaj") || q.includes("kamai") || q.includes("total")) {
+    category = "sales";
+    spoken = `Today's total sales collection is ₹${totalSales.toLocaleString('en-IN')}, with ${bills.length} bills recorded.`;
+  } else if (q.includes("udhar") || q.includes("khata") || q.includes("credit") || q.includes("baki") || q.includes("pending")) {
+    category = "khata";
+    spoken = `You have ₹${khata.totalPending.toLocaleString('en-IN')} total pending in Udhar across ${khata.debtorsCount} customers.`;
+  } else if (q.includes("product") || q.includes("item") || q.includes("stock") || q.includes("bika") || q.includes("selling")) {
+    category = "products";
+    const top = products[0]?.name || "Daily groceries";
+    spoken = `You have ${products.length} active grocery items in your catalog. Best seller is ${top}.`;
+  } else if (q.includes("customer") || q.includes("grahak")) {
+    category = "customers";
+    spoken = `You have ${customers.length} registered customers in your database.`;
+  } else {
+    category = "summary";
+    spoken = `Store Overview: Total sales ₹${totalSales.toLocaleString('en-IN')} across ${bills.length} bills, with ₹${khata.totalPending.toLocaleString('en-IN')} in pending customer Udhar.`;
+  }
+
+  return {
+    success: true,
+    query,
+    spokenResponse: spoken,
+    category,
+    metrics: {
+      todaySales: totalSales,
+      billsCount: bills.length,
+      pendingUdhar: khata.totalPending,
+      debtorsCount: khata.debtorsCount,
+      productsCount: products.length,
+      customersCount: customers.length,
+    }
+  };
+}
+
 // Shopkeeper profile update helper
 export function updateShopkeeperProfileOffline(data: any): Shopkeeper {
   const email = (data.current_email || data.email || "").toLowerCase().trim();
