@@ -8,8 +8,23 @@ import UpiPaymentModal from "./UpiPaymentModal";
 import PaymentModeModal, { type PaymentMode } from "./PaymentModeModal";
 import WhatsAppModal from "./WhatsAppModal";
 import { apiUrl } from "../config/api";
-import { parseVoiceBillLocally, addStoreBill, getStoreCustomers, addStoreCustomer } from "../lib/offlineStore";
+import { parseVoiceBillLocally, addStoreBill, getStoreCustomers, addStoreCustomer, containsNonGrocery } from "../lib/offlineStore";
 import { downloadInvoicePdf } from "../lib/pdfGenerator";
+
+const speakAlert = (message: string) => {
+  if (typeof window !== "undefined" && "speechSynthesis" in window) {
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(message);
+      utterance.lang = "en-IN";
+      utterance.rate = 0.95;
+      utterance.pitch = 1.0;
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.warn("Speech synthesis error:", e);
+    }
+  }
+};
 
 export default function VoiceBilling() {
   const { shopkeeper } = useAuth();
@@ -194,6 +209,18 @@ export default function VoiceBilling() {
       toast.error("No speech detected. Please speak or type items.");
       return;
     }
+
+    // 0. Daily Grocery Policy Validation (Fast check)
+    if (containsNonGrocery(textToProcess)) {
+      const msg = "This platform is for daily products only";
+      setError(msg);
+      toast.error(msg);
+      speakAlert(msg);
+      setBillingData(null);
+      setItems([]);
+      return;
+    }
+
     setProcessing(true);
     setError("");
 
@@ -208,18 +235,31 @@ export default function VoiceBilling() {
         { timeout: 2500 }
       );
 
-      if (response.data && response.data.success) {
-        setBillingData(response.data);
-        setItems(
-          response.data.items.map((i: any) => ({
-            ...i,
-            quantity: i.quantity || 1,
-            unit_price: i.unit_price || 0,
-          }))
-        );
-        toast.success("Bill processed successfully!");
-        setProcessing(false);
-        return;
+      if (response.data) {
+        if (response.data.is_grocery === false || response.data.error === "This platform is for daily products only") {
+          const msg = "This platform is for daily products only";
+          setError(msg);
+          toast.error(msg);
+          speakAlert(msg);
+          setBillingData(null);
+          setItems([]);
+          setProcessing(false);
+          return;
+        }
+
+        if (response.data.success) {
+          setBillingData(response.data);
+          setItems(
+            response.data.items.map((i: any) => ({
+              ...i,
+              quantity: i.quantity || 1,
+              unit_price: i.unit_price || 0,
+            }))
+          );
+          toast.success("Bill processed successfully!");
+          setProcessing(false);
+          return;
+        }
       }
     } catch (err: any) {
       console.warn("Backend voice billing unreachable, using offline voice parser:", err);
@@ -228,6 +268,16 @@ export default function VoiceBilling() {
     // 2. Offline Smart Voice Parser fallback (works 100% offline & on mobile)
     try {
       const localResult = parseVoiceBillLocally(textToProcess, shopkeeper?.email);
+      if (localResult && (localResult.is_grocery === false || localResult.error === "This platform is for daily products only")) {
+        const msg = "This platform is for daily products only";
+        setError(msg);
+        toast.error(msg);
+        speakAlert(msg);
+        setBillingData(null);
+        setItems([]);
+        return;
+      }
+
       if (localResult && localResult.items.length > 0) {
         setBillingData(localResult);
         setItems(
@@ -511,19 +561,21 @@ export default function VoiceBilling() {
                         <AlertCircle className="h-5 w-5 shrink-0" />
                         <p>{error}</p>
                     </div>
-                    <button
-                        type="button"
-                        onClick={async () => {
-                            const granted = await requestMicPermission();
-                            if (granted) {
-                                toast.success("Microphone permission granted!");
-                                startRecording();
-                            }
-                        }}
-                        className="shrink-0 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-rose-700"
-                    >
-                        Grant Permission
-                    </button>
+                    {/(permission|microphone|not allowed|blocked)/i.test(error) && (
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                const granted = await requestMicPermission();
+                                if (granted) {
+                                    toast.success("Microphone permission granted!");
+                                    startRecording();
+                                }
+                            }}
+                            className="shrink-0 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-rose-700"
+                        >
+                            Grant Permission
+                        </button>
+                    )}
                 </div>
             )}
 

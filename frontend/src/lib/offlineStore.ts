@@ -568,9 +568,61 @@ const NUMBER_WORDS: Record<string, number> = {
   quarter: 1,
 };
 
-export function parseVoiceBillLocally(rawText: string, email?: string): { success: boolean; items: any[]; total_amount: number } {
+// Prohibited non-grocery keywords (Electronics, Vehicles, Furniture, Construction, Fashion/Jewelry, etc.)
+export const NON_GROCERY_KEYWORDS = new Set([
+  // Electronics & Computers
+  "laptop", "laptops", "macbook", "macbooks", "computer", "computers", "pc", "desktop", 
+  "monitor", "monitors", "cpu", "gpu", "graphics", "motherboard", "ram", "harddisk", "ssd", 
+  "pendrive", "keyboard", "keyboards", "mouse", "printer", "printers", "scanner", "projector",
+  // Mobile Phones & Gadgets
+  "phone", "phones", "mobile", "mobiles", "smartphone", "smartphones", "iphone", "iphones",
+  "samsung", "galaxy", "oneplus", "redmi", "realme", "vivo", "oppo", "pixel", "ipad", "ipads",
+  "tablet", "tablets", "smartwatch", "smartwatches", "earphone", "earphones", "headphone", 
+  "headphones", "airpod", "airpods", "earbuds", "speaker", "speakers", "soundbar", "charger", 
+  "chargers", "powerbank", "power",
+  // Home Appliances
+  "tv", "tvs", "television", "televisions", "refrigerator", "refrigerators", "fridge", 
+  "washing", "washer", "dryer", "ac", "cooler", "coolers", "microwave", "oven", "dishwasher", 
+  "vacuum", "geyser", "heater",
+  // Automobiles & Vehicles
+  "car", "cars", "bike", "bikes", "motorcycle", "motorcycles", "scooter", "scooters", 
+  "scooty", "truck", "trucks", "tractor", "bicycle", "bicycles", "cycle", "cycles", 
+  "tyre", "tyres", "tire", "tires", "helmet", "helmets", "battery", "engine",
+  // Furniture & Fixtures
+  "sofa", "sofas", "bed", "beds", "mattress", "mattresses", "wardrobe", "almirah", 
+  "chair", "chairs", "cupboard", "desk", "table", "curtain", "carpet",
+  // Real Estate & Construction & Hardware
+  "house", "flat", "apartment", "plot", "land", "cement", "brick", "bricks", "sand", 
+  "marble", "granite", "plywood", "tile", "tiles", "paint", "hammer", "drill", "pipe",
+  // Fashion, Footwear & Luxury Jewelry
+  "shirt", "shirts", "tshirt", "tshirts", "pant", "pants", "jeans", "trousers", "saree", 
+  "sarees", "dress", "dresses", "suit", "suits", "blazer", "jacket", "jackets", "shoes", 
+  "shoe", "sneakers", "sneaker", "boots", "sandals", "heels", "handbag", "wallet", 
+  "gold", "silver", "diamond", "platinum", "necklace", "ring", "rings", "bangle", "bangles", "earring",
+  // Machinery & Weapons
+  "generator", "crane", "lathe", "gun", "weapon", "pistol"
+]);
+
+export function containsNonGrocery(text: string): boolean {
+  if (!text) return false;
+  const words = text.toLowerCase().match(/[a-z]+/g) || [];
+  return words.some((w) => NON_GROCERY_KEYWORDS.has(w));
+}
+
+export function parseVoiceBillLocally(rawText: string, email?: string): { success: boolean; is_grocery?: boolean; items: any[]; total_amount: number; error?: string } {
   if (!rawText || !rawText.trim()) {
     return { success: false, items: [], total_amount: 0 };
+  }
+
+  // Validate daily products policy
+  if (containsNonGrocery(rawText)) {
+    return {
+      success: false,
+      is_grocery: false,
+      items: [],
+      total_amount: 0,
+      error: "This platform is for daily products only",
+    };
   }
 
   const catalog = getStoreProducts(email);

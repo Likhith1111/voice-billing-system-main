@@ -513,11 +513,63 @@ def parse_voice_text_locally(text):
     return items
 
 
+# Prohibited non-grocery keywords (Electronics, Vehicles, Furniture, Heavy appliances, Fashion/Luxury, Construction, etc.)
+NON_GROCERY_KEYWORDS = {
+    # Electronics & Computers
+    'laptop', 'laptops', 'macbook', 'macbooks', 'computer', 'computers', 'pc', 'desktop', 
+    'monitor', 'monitors', 'cpu', 'gpu', 'graphics', 'motherboard', 'ram', 'harddisk', 'ssd', 
+    'pendrive', 'keyboard', 'keyboards', 'mouse', 'printer', 'printers', 'scanner', 'projector',
+    # Mobile Phones & Gadgets
+    'phone', 'phones', 'mobile', 'mobiles', 'smartphone', 'smartphones', 'iphone', 'iphones',
+    'samsung', 'galaxy', 'oneplus', 'redmi', 'realme', 'vivo', 'oppo', 'pixel', 'ipad', 'ipads',
+    'tablet', 'tablets', 'smartwatch', 'smartwatches', 'earphone', 'earphones', 'headphone', 
+    'headphones', 'airpod', 'airpods', 'earbuds', 'speaker', 'speakers', 'soundbar', 'charger', 
+    'chargers', 'powerbank', 'power',
+    # Home Appliances
+    'tv', 'tvs', 'television', 'televisions', 'refrigerator', 'refrigerators', 'fridge', 
+    'washing', 'washer', 'dryer', 'ac', 'cooler', 'coolers', 'microwave', 'oven', 'dishwasher', 
+    'vacuum', 'geyser', 'heater',
+    # Automobiles & Vehicles
+    'car', 'cars', 'bike', 'bikes', 'motorcycle', 'motorcycles', 'scooter', 'scooters', 
+    'scooty', 'truck', 'trucks', 'tractor', 'bicycle', 'bicycles', 'cycle', 'cycles', 
+    'tyre', 'tyres', 'tire', 'tires', 'helmet', 'helmets', 'battery', 'engine',
+    # Furniture & Fixtures
+    'sofa', 'sofas', 'bed', 'beds', 'mattress', 'mattresses', 'wardrobe', 'almirah', 
+    'chair', 'chairs', 'cupboard', 'desk', 'table', 'curtain', 'carpet',
+    # Real Estate & Construction & Hardware
+    'house', 'flat', 'apartment', 'plot', 'land', 'cement', 'brick', 'bricks', 'sand', 
+    'marble', 'granite', 'plywood', 'tile', 'tiles', 'paint', 'hammer', 'drill', 'pipe',
+    # Fashion, Footwear & Luxury Jewelry
+    'shirt', 'shirts', 'tshirt', 'tshirts', 'pant', 'pants', 'jeans', 'trousers', 'saree', 
+    'sarees', 'dress', 'dresses', 'suit', 'suits', 'blazer', 'jacket', 'jackets', 'shoes', 
+    'shoe', 'sneakers', 'sneaker', 'boots', 'sandals', 'heels', 'handbag', 'wallet', 
+    'gold', 'silver', 'diamond', 'platinum', 'necklace', 'ring', 'rings', 'bangle', 'bangles', 'earring',
+    # Machinery & Weapons
+    'generator', 'crane', 'lathe', 'gun', 'weapon', 'pistol'
+}
+
+def contains_non_grocery(text: str) -> bool:
+    import re
+    tokens = re.findall(r'[a-zA-Z]+', text.lower())
+    for tok in tokens:
+        if tok in NON_GROCERY_KEYWORDS:
+            return True
+    return False
+
+
 class VoiceBillingView(APIView):
     def post(self, request):
         text = request.data.get("text", "")
         if not text:
             return Response({"success": False, "error": "No text provided"}, status=400)
+
+        # Platform policy check: strictly for daily grocery / household products
+        if contains_non_grocery(text):
+            return Response({
+                "success": False,
+                "is_grocery": False,
+                "error": "This platform is for daily products only"
+            }, status=200)
 
         # 1. Setup Gemini
         gemini_api_key = os.environ.get("GEMINI_API_KEY")
@@ -530,12 +582,22 @@ class VoiceBillingView(APIView):
                 client = genai.Client(api_key=gemini_api_key)
                 
                 prompt = f"""
-You are an AI assistant that extracts product, quantity, and price information from a voice billing transcript.
+You are an AI retail billing assistant strictly for a daily grocery, food, provision, and household supermarket.
 The user said: "{text}"
 
-Extract the items and calculate the total for each item and the grand total.
-Respond strictly in valid JSON format like this, and nothing else:
+CRITICAL POLICY CHECK:
+1. This platform is strictly and exclusively for DAILY GROCERY & HOUSEHOLD ESSENTIALS (food, dairy, fruits, vegetables, spices, pulses, grains, snacks, beverages, soaps, detergents, toiletries, and daily provisions).
+2. If the user mentions ANY non-grocery items (such as laptops, phones, electronics, televisions, computers, gadgets, cars, bikes, vehicles, furniture, clothes, shoes, real estate, cement, or jewelry), you MUST REJECT the request.
+3. If any non-grocery item is detected, respond strictly in this JSON format:
 {{
+  "success": false,
+  "is_grocery": false,
+  "error": "This platform is for daily products only"
+}}
+4. If and only if the items are valid daily grocery/household products, extract the items and respond strictly in this JSON format:
+{{
+  "success": true,
+  "is_grocery": true,
   "items": [
     {{
       "product": "Product Name",
@@ -576,6 +638,24 @@ Respond strictly in valid JSON format like this, and nothing else:
             except Exception as e:
                 last_error = str(e)
                 print("Gemini Voice Processing error:", e)
+
+        # Policy validation: check if Gemini rejected it as non-grocery
+        if isinstance(billing_data, dict):
+            if billing_data.get('is_grocery') is False or billing_data.get('error') == "This platform is for daily products only":
+                return Response({
+                    "success": False,
+                    "is_grocery": False,
+                    "error": "This platform is for daily products only"
+                }, status=200)
+
+            # Verify individual parsed items
+            for item in billing_data.get('items', []):
+                if contains_non_grocery(item.get('product', '')):
+                    return Response({
+                        "success": False,
+                        "is_grocery": False,
+                        "error": "This platform is for daily products only"
+                    }, status=200)
 
         # Intelligent local fallback if Gemini is offline, busy, or no API key
         if not billing_data or not billing_data.get('items'):
