@@ -18,12 +18,16 @@ import {
   Layers,
   ChevronDown,
   ChevronUp,
+  RotateCcw,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../App";
 import {
   getStorePayLaterCustomers,
   settleCustomerPayLater,
+  purgeLegacyKhataHistory,
+  clearStoreKhata,
   type PayLaterCustomer,
   type PayLaterVisit,
 } from "../lib/offlineStore";
@@ -50,6 +54,8 @@ export default function PayLaterSection() {
   };
 
   useEffect(() => {
+    // Automatically purge legacy mock/test history so the section runs purely on live data
+    purgeLegacyKhataHistory(shopkeeper?.email);
     refreshPayLaterData();
 
     const handleUpdate = () => {
@@ -64,6 +70,17 @@ export default function PayLaterSection() {
       window.removeEventListener("storage", handleUpdate);
     };
   }, [shopkeeper?.email]);
+
+  const handleClearAllHistory = () => {
+    const confirm = window.confirm(
+      "Are you sure you want to clear all previous Pay Later history? This will clear all historical records so only new live credit bills appear going forward."
+    );
+    if (!confirm) return;
+
+    clearStoreKhata(shopkeeper?.email);
+    refreshPayLaterData();
+    toast.success("Pay Later history cleared! Ready for live credit billing.");
+  };
 
   const toggleCollapse = (key: string) => {
     setCollapsedKeys((prev) => {
@@ -212,6 +229,15 @@ export default function PayLaterSection() {
               ₹{totalOutstandingAll.toLocaleString("en-IN")}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={handleClearAllHistory}
+            title="Clear all Pay Later history (start fresh)"
+            className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-bold text-red-600 hover:bg-red-100 transition"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Reset History</span>
+          </button>
         </div>
       </div>
 
@@ -262,18 +288,37 @@ export default function PayLaterSection() {
           >
             Settled (₹0)
           </button>
+          <button
+            type="button"
+            onClick={handleClearAllHistory}
+            title="Reset Pay Later history (start fresh from now)"
+            className="ml-1 flex items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-2.5 py-1.5 text-[11px] font-bold text-red-600 hover:bg-red-100 transition"
+          >
+            <Trash2 className="h-3 w-3" />
+            Reset
+          </button>
         </div>
       </div>
 
       {/* Customer Pay Later Cards List */}
       <div className="mt-5 space-y-4">
         {filteredCustomers.length === 0 ? (
-          <div className="py-12 text-center text-slate-400 text-xs">
-            <BookOpen className="mx-auto h-9 w-9 text-slate-300 mb-2" />
-            <p className="font-bold text-slate-700 text-sm">No Pay Later records found</p>
-            <p className="text-xs text-slate-400 mt-1">
-              When customers take products on credit, their itemized purchase history will show here live.
+          <div className="py-14 text-center">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 border border-emerald-100">
+              <BookOpen className="h-7 w-7 text-emerald-400" />
+            </div>
+            <p className="font-bold text-slate-700 text-sm">
+              {filterMode === "settled" ? "No settled records yet" : "No active Pay Later records"}
             </p>
+            <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+              {filterMode === "settled"
+                ? "Once a customer clears their dues, they'll appear here."
+                : "This section is live & active. Bills created with 'Udhar / Credit' payment mode will appear here automatically."}
+            </p>
+            <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Live Active — Waiting for new credit bills
+            </span>
           </div>
         ) : (
           filteredCustomers.map((cust) => {

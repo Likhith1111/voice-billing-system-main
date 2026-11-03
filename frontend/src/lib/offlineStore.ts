@@ -519,11 +519,7 @@ export function computeDashboardStats(bills: any[], products: any[] = [], custom
 
 
 // Customers helpers
-export const DEFAULT_CUSTOMERS = [
-  { id: 1, name: "Ramesh Sharma", phone: "9876543210", initials: "RS", tone: "violet" },
-  { id: 2, name: "Priya Patel", phone: "9812345678", initials: "PP", tone: "blue" },
-  { id: 3, name: "Anil Verma", phone: "9988776655", initials: "AV", tone: "green" },
-];
+export const DEFAULT_CUSTOMERS: any[] = [];
 
 export function getStoreCustomers(email?: string): any[] {
   const storeEmail = (email || "default").toLowerCase();
@@ -531,10 +527,16 @@ export function getStoreCustomers(email?: string): any[] {
   const stored = localStorage.getItem(key);
   if (stored) {
     try {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((c: any) => {
+          const n = (c.name || "").toLowerCase();
+          return !n.includes("ramesh sharma") && !n.includes("priya patel");
+        });
+      }
     } catch {}
   }
-  return DEFAULT_CUSTOMERS;
+  return [];
 }
 
 export function saveStoreCustomers(customers: any[], email?: string) {
@@ -602,89 +604,7 @@ export interface PayLaterCustomer {
   }>;
 }
 
-export const DEFAULT_KHATA_ENTRIES: KhataEntry[] = [
-  {
-    id: 1,
-    customerName: "Ramesh Sharma",
-    customerPhone: "9876543210",
-    amount: 450,
-    entryType: "GIVEN",
-    note: "Atta, Dal & Sugar",
-    billInvoice: "INV-5120",
-    items: [
-      { product: "Aashirvaad Shudh Chakki Atta 5kg", quantity: 1, unit_price: 240, total: 240 },
-      { product: "Tata Sampann Toor Dal 1kg", quantity: 1, unit_price: 165, total: 165 },
-      { product: "Pure Refined Sugar 1kg", quantity: 1, unit_price: 45, total: 45 }
-    ],
-    date: new Date(Date.now() - 86400000 * 2).toISOString(),
-  },
-  {
-    id: 2,
-    customerName: "Ramesh Sharma",
-    customerPhone: "9876543210",
-    amount: 350,
-    entryType: "GIVEN",
-    note: "Sunflower Oil & Biscuits",
-    billInvoice: "INV-5125",
-    items: [
-      { product: "Fortune Sunlite Sunflower Oil 1L", quantity: 2, unit_price: 145, total: 290 },
-      { product: "Britannia Good Day Butter 100g", quantity: 2, unit_price: 30, total: 60 }
-    ],
-    date: new Date(Date.now() - 86400000 * 1).toISOString(),
-  },
-  {
-    id: 3,
-    customerName: "Ramesh Sharma",
-    customerPhone: "9876543210",
-    amount: 200,
-    entryType: "RECEIVED",
-    note: "Cash partial payment",
-    date: new Date(Date.now() - 86400000 * 0.5).toISOString(),
-  },
-  {
-    id: 4,
-    customerName: "Likhith",
-    customerPhone: "9704955713",
-    amount: 600,
-    entryType: "GIVEN",
-    note: "Basmati Rice 5kg",
-    billInvoice: "INV-5752",
-    items: [
-      { product: "Fortune Basmati Rice 1kg", quantity: 5, unit_price: 120, total: 600 }
-    ],
-    date: new Date(Date.now() - 86400000 * 1.8).toISOString(),
-  },
-  {
-    id: 5,
-    customerName: "Likhith",
-    customerPhone: "9704955713",
-    amount: 105,
-    entryType: "GIVEN",
-    note: "Amul Milk & Bread",
-    billInvoice: "INV-7376",
-    items: [
-      { product: "Amul Taaza Milk 500ml", quantity: 2, unit_price: 30, total: 60 },
-      { product: "Harvest White Bread 400g", quantity: 1, unit_price: 45, total: 45 }
-    ],
-    date: new Date(Date.now() - 86400000 * 0.8).toISOString(),
-  },
-  {
-    id: 6,
-    customerName: "Priya Patel",
-    customerPhone: "9812345678",
-    amount: 1186,
-    entryType: "GIVEN",
-    note: "Monthly rations & Tea",
-    billInvoice: "INV-5188",
-    items: [
-      { product: "Fortune Basmati Rice 1kg", quantity: 5, unit_price: 120, total: 600 },
-      { product: "Tata Tea Premium 500g", quantity: 2, unit_price: 250, total: 500 },
-      { product: "Amul Butter 100g", quantity: 1, unit_price: 58, total: 58 },
-      { product: "Tata Salt 1kg", quantity: 1, unit_price: 28, total: 28 }
-    ],
-    date: new Date(Date.now() - 86400000 * 1.5).toISOString(),
-  }
-];
+export const DEFAULT_KHATA_ENTRIES: KhataEntry[] = [];
 
 export function getStoreKhata(email?: string): KhataEntry[] {
   const storeEmail = (email || "default").toLowerCase();
@@ -693,23 +613,126 @@ export function getStoreKhata(email?: string): KhataEntry[] {
   if (stored) {
     try {
       const parsed: KhataEntry[] = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        // Check if multi-visit entries exist; if not, merge default entries so user has full multi-visit test data
-        const hasMultiVisits = parsed.some(p => p.billInvoice === "INV-5125" || p.billInvoice === "INV-5752");
-        if (hasMultiVisits) return parsed;
+      if (Array.isArray(parsed)) {
+        // Filter out any legacy dummy/demo entries so only real live bills from now onwards appear
+        const liveOnly = parsed.filter((p) => {
+          const name = (p.customerName || "").toLowerCase();
+          const inv = (p.billInvoice || "").toUpperCase();
+          const isMock =
+            name.includes("ramesh sharma") ||
+            name.includes("priya patel") ||
+            inv === "INV-5120" ||
+            inv === "INV-5125" ||
+            inv === "INV-5188";
+          return !isMock;
+        });
 
-        const merged = [...parsed];
-        for (const def of DEFAULT_KHATA_ENTRIES) {
-          if (!merged.some(m => (m.billInvoice && m.billInvoice === def.billInvoice) || m.id === def.id)) {
-            merged.push(def);
-          }
+        // If mock entries were filtered out, save clean live data
+        if (liveOnly.length !== parsed.length) {
+          localStorage.setItem(key, JSON.stringify(liveOnly));
         }
-        localStorage.setItem(key, JSON.stringify(merged));
-        return merged;
+        return liveOnly;
       }
     } catch {}
   }
-  return DEFAULT_KHATA_ENTRIES;
+  return [];
+}
+
+export function purgeLegacyKhataHistory(email?: string) {
+  if (typeof window === "undefined") return;
+  const storeEmail = (email || "default").toLowerCase().trim();
+  const flagKey = `quantum_khata_purged_live_v6_${storeEmail}`;
+  if (!localStorage.getItem(flagKey)) {
+    // Purge old khata storage
+    localStorage.setItem(`quantum_khata_${storeEmail}`, JSON.stringify([]));
+    localStorage.setItem("quantum_khata_default", JSON.stringify([]));
+
+    // Clear mock customers
+    try {
+      const custKey = `quantum_customers_${storeEmail}`;
+      const custs = JSON.parse(localStorage.getItem(custKey) || "[]");
+      if (Array.isArray(custs)) {
+        const liveCusts = custs.filter((c: any) => {
+          const n = (c.name || "").toLowerCase();
+          return !n.includes("ramesh sharma") && !n.includes("priya patel");
+        });
+        localStorage.setItem(custKey, JSON.stringify(liveCusts));
+      }
+    } catch {}
+
+    // Settle/remove old test credit bills
+    try {
+      const billsKey = `quantum_bills_${storeEmail}`;
+      const stored = localStorage.getItem(billsKey);
+      if (stored) {
+        const bills = JSON.parse(stored);
+        if (Array.isArray(bills)) {
+          const cleaned = bills.filter((b: any) => {
+            const cust = (b.customer || "").toLowerCase();
+            const inv = (b.invoice || b.invoice_number || "").toUpperCase();
+            const isMock = cust.includes("ramesh sharma") || cust.includes("priya patel") || inv === "INV-5120" || inv === "INV-5125" || inv === "INV-5188";
+            return !isMock;
+          }).map((b: any) => {
+            if (b.payment_mode === "Credit" || b.status === "Pending" || b.payment_mode === "Udhar" || b.status === "Udhar") {
+              return { ...b, payment_mode: "Cash", status: "Paid" };
+            }
+            return b;
+          });
+          localStorage.setItem(billsKey, JSON.stringify(cleaned));
+        }
+      }
+    } catch {}
+
+    localStorage.setItem(flagKey, "true");
+  }
+}
+
+export function clearStoreKhata(email?: string) {
+  const storeEmail = (email || "default").toLowerCase();
+  const key = `quantum_khata_${storeEmail}`;
+  localStorage.setItem(key, JSON.stringify([]));
+  localStorage.setItem("quantum_khata_default", JSON.stringify([]));
+
+  // Also clean any demo credit bills or mark pending bills as settled
+  try {
+    const billsKey = `quantum_bills_${storeEmail}`;
+    const storedBills = JSON.parse(localStorage.getItem(billsKey) || "[]");
+    if (Array.isArray(storedBills)) {
+      const cleanBills = storedBills
+        .filter((b: any) => {
+          const inv = (b.invoice || b.invoice_number || "").toUpperCase();
+          const cust = (b.customer || "").toLowerCase();
+          return (
+            inv !== "INV-5120" &&
+            inv !== "INV-5125" &&
+            inv !== "INV-5188" &&
+            !cust.includes("ramesh sharma") &&
+            !cust.includes("priya patel")
+          );
+        })
+        .map((b: any) => {
+          if (
+            b.payment_mode === "Credit" ||
+            b.status === "Pending" ||
+            b.payment_mode === "Udhar" ||
+            b.status === "Udhar"
+          ) {
+            return { ...b, payment_mode: "Cash", status: "Paid" };
+          }
+          return b;
+        });
+      localStorage.setItem(billsKey, JSON.stringify(cleanBills));
+    }
+  } catch {}
+
+  // Also call backend to delete if reachable
+  try {
+    fetch("/api/khata/", { method: "DELETE" }).catch(() => {});
+  } catch {}
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("qbill-bill-added", { detail: { email: storeEmail } }));
+  }
 }
 
 export function saveStoreKhata(entries: KhataEntry[], email?: string) {
@@ -763,6 +786,18 @@ export function getStorePayLaterCustomers(email?: string): PayLaterCustomer[] {
   const khataEntries = getStoreKhata(email);
   const bills = getStoreBills(email);
 
+  const isMock = (name: string, inv: string) => {
+    const n = (name || "").toLowerCase();
+    const i = (inv || "").toUpperCase();
+    return (
+      n.includes("ramesh sharma") ||
+      n.includes("priya patel") ||
+      i === "INV-5120" ||
+      i === "INV-5125" ||
+      i === "INV-5188"
+    );
+  };
+
   // Map of bills by invoice number for quick item & time lookup
   const billMap = new Map<string, any>();
   for (const b of bills) {
@@ -781,12 +816,28 @@ export function getStorePayLaterCustomers(email?: string): PayLaterCustomer[] {
     seenInvoices: Set<string>;
   }> = {};
 
-  const getOrInitCustomer = (name: string, phone: string) => {
-    const key = (phone || name || "unknown").toLowerCase().trim();
-    if (!customerMap[key]) {
-      customerMap[key] = {
-        customerName: name || "Customer",
-        customerPhone: phone || "",
+  const phoneToKey = new Map<string, string>();
+  const nameToKey = new Map<string, string>();
+
+  const getOrInitCustomer = (rawName: string, rawPhone: string) => {
+    const name = (rawName || "Customer").trim();
+    const phone = (rawPhone || "").trim();
+    const normName = name.toLowerCase();
+    const cleanPhone = phone.replace(/[^0-9]/g, "");
+
+    let targetKey: string | undefined;
+
+    if (cleanPhone && phoneToKey.has(cleanPhone)) {
+      targetKey = phoneToKey.get(cleanPhone)!;
+    } else if (normName && normName !== "customer" && nameToKey.has(normName)) {
+      targetKey = nameToKey.get(normName)!;
+    }
+
+    if (!targetKey) {
+      targetKey = cleanPhone || normName || `cust-${Date.now()}`;
+      customerMap[targetKey] = {
+        customerName: name,
+        customerPhone: phone,
         totalGiven: 0,
         totalRepaid: 0,
         lastDate: "",
@@ -794,12 +845,24 @@ export function getStorePayLaterCustomers(email?: string): PayLaterCustomer[] {
         repayments: [],
         seenInvoices: new Set<string>(),
       };
+      if (cleanPhone) phoneToKey.set(cleanPhone, targetKey);
+      if (normName && normName !== "customer") nameToKey.set(normName, targetKey);
+    } else {
+      if (!customerMap[targetKey].customerPhone && phone) {
+        customerMap[targetKey].customerPhone = phone;
+        if (cleanPhone) phoneToKey.set(cleanPhone, targetKey);
+      }
+      if (customerMap[targetKey].customerName === "Customer" && name !== "Customer") {
+        customerMap[targetKey].customerName = name;
+      }
     }
-    return customerMap[key];
+    return customerMap[targetKey];
   };
 
   // 1. Process Khata Entries
   for (const entry of khataEntries) {
+    if (isMock(entry.customerName, entry.billInvoice || "")) continue;
+
     const cust = getOrInitCustomer(entry.customerName, entry.customerPhone);
     const eDate = new Date(entry.date);
     const dateFormatted = !isNaN(eDate.getTime())
@@ -870,6 +933,8 @@ export function getStorePayLaterCustomers(email?: string): PayLaterCustomer[] {
 
     if (isCredit) {
       const inv = (b.invoice || b.invoice_number || "").toLowerCase();
+      if (isMock(b.customer, inv)) continue;
+
       const cust = getOrInitCustomer(b.customer, b.phone || b.customer_phone || "");
 
       if (!cust.seenInvoices.has(inv)) {

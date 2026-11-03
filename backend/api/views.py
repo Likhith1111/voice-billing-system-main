@@ -1205,6 +1205,14 @@ class KhataView(APIView):
             "entry_id": entry.id
         })
 
+    def delete(self, request):
+        shopkeeper = get_current_shopkeeper(request)
+        if shopkeeper:
+            KhataEntry.objects.filter(shopkeeper=shopkeeper).delete()
+        else:
+            KhataEntry.objects.all().delete()
+        return Response({"success": True, "message": "All khata history cleared"})
+
 
 class AssistantQueryView(APIView):
     def post(self, request):
