@@ -20,9 +20,11 @@ import {
   ChevronUp,
   RotateCcw,
   Trash2,
+  QrCode,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../App";
+import UpiPaymentModal from "./UpiPaymentModal";
 import {
   getStorePayLaterCustomers,
   settleCustomerPayLater,
@@ -47,6 +49,13 @@ export default function PayLaterSection() {
   const [collectAmount, setCollectAmount] = useState<string>("");
   const [collectMode, setCollectMode] = useState<"Cash" | "UPI">("Cash");
   const [collectNote, setCollectNote] = useState<string>("");
+
+  // UPI QR Code state for Pay Later collection
+  const [payLaterUpiData, setPayLaterUpiData] = useState<{
+    customer: PayLaterCustomer;
+    amount: number;
+    note: string;
+  } | null>(null);
 
   const refreshPayLaterData = () => {
     const list = getStorePayLaterCustomers(shopkeeper?.email);
@@ -114,19 +123,44 @@ export default function PayLaterSection() {
       return;
     }
 
+    if (amt > collectModalCustomer.totalDue + 0.01) {
+      toast.error(`Amount cannot exceed the total balance due of ₹${collectModalCustomer.totalDue}`);
+      return;
+    }
+
+    // If UPI selected, open the dynamic UPI QR Code Modal for the exact amount entered
+    if (collectMode === "UPI") {
+      setPayLaterUpiData({
+        customer: collectModalCustomer,
+        amount: amt,
+        note: collectNote,
+      });
+      setCollectModalCustomer(null);
+      return;
+    }
+
+    // Cash settlement
     settleCustomerPayLater(
       collectModalCustomer.customerPhone,
       collectModalCustomer.customerName,
       amt,
-      collectMode,
+      "Cash",
       collectNote,
       shopkeeper?.email
     );
 
-    toast.success(
-      `Collected ₹${amt.toLocaleString("en-IN")} via ${collectMode} from ${collectModalCustomer.customerName}!`,
-      { duration: 4000 }
-    );
+    const remaining = Math.max(0, collectModalCustomer.totalDue - amt);
+    if (remaining <= 0) {
+      toast.success(
+        `✅ All Pay Later dues cleared for ${collectModalCustomer.customerName} via Cash!`,
+        { duration: 4000 }
+      );
+    } else {
+      toast.success(
+        `Collected ₹${amt.toLocaleString("en-IN")} via Cash from ${collectModalCustomer.customerName}! Remaining: ₹${remaining}.`,
+        { duration: 4000 }
+      );
+    }
 
     setCollectModalCustomer(null);
     refreshPayLaterData();
@@ -620,6 +654,26 @@ export default function PayLaterSection() {
                 </div>
               </div>
 
+              {/* Dynamic Remaining Balance Preview before generating QR or cash */}
+              {(() => {
+                const enteredAmt = parseFloat(collectAmount) || 0;
+                const remainingBal = Math.max(0, collectModalCustomer.totalDue - enteredAmt);
+                return (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between text-slate-600">
+                      <span>Amount paying now ({collectMode}):</span>
+                      <span className="font-bold text-slate-900">₹{enteredAmt.toLocaleString("en-IN")}</span>
+                    </div>
+                    <div className="flex items-center justify-between font-bold pt-1.5 border-t border-slate-200/80">
+                      <span className="text-slate-600">Remaining Udhar balance:</span>
+                      <span className={remainingBal === 0 ? "text-emerald-600" : "text-rose-700"}>
+                        ₹{remainingBal.toLocaleString("en-IN")} {remainingBal === 0 ? "(Fully Cleared)" : ""}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
                   Payment Mode *
@@ -645,7 +699,7 @@ export default function PayLaterSection() {
                         : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                     }`}
                   >
-                    <CreditCard className="h-4 w-4" /> UPI / QR
+                    <QrCode className="h-4 w-4" /> UPI / QR
                   </button>
                 </div>
               </div>
@@ -673,14 +727,60 @@ export default function PayLaterSection() {
                 </button>
                 <button
                   type="submit"
-                  className="rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-700 transition"
+                  className={`rounded-xl px-5 py-2.5 text-xs font-bold text-white shadow-md transition flex items-center gap-1.5 ${
+                    collectMode === "UPI"
+                      ? "bg-violet-600 hover:bg-violet-700 shadow-violet-600/20"
+                      : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
+                  }`}
                 >
-                  Confirm Collection
+                  {collectMode === "UPI" ? (
+                    <>
+                      <QrCode className="h-4 w-4" />
+                      Generate UPI QR Code (₹{collectAmount || 0})
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-4 w-4" />
+                      Confirm Cash Collection
+                    </>
+                  )}
                 </button>
               </div>
             </form>
           </div>
         </div>
+      )}
+
+      {/* Dynamic UPI QR Code Modal for Pay Later collection */}
+      {payLaterUpiData && (
+        <UpiPaymentModal
+          amount={payLaterUpiData.amount}
+          storeName={shopkeeper?.store_name || "SmartQ Store"}
+          upiId={shopkeeper?.upi_id || "9704955713-2@ybl"}
+          customerName={payLaterUpiData.customer.customerName}
+          invoiceNumber={`UDHAR-${payLaterUpiData.customer.customerName.replace(/\s+/g, "")}`}
+          onClose={() => setPayLaterUpiData(null)}
+          onPaymentConfirmed={() => {
+            settleCustomerPayLater(
+              payLaterUpiData.customer.customerPhone,
+              payLaterUpiData.customer.customerName,
+              payLaterUpiData.amount,
+              "UPI",
+              payLaterUpiData.note || "Pay Later UPI QR payment",
+              shopkeeper?.email
+            );
+            const remaining = Math.max(0, payLaterUpiData.customer.totalDue - payLaterUpiData.amount);
+            if (remaining <= 0) {
+              toast.success(`✅ All Pay Later dues cleared for ${payLaterUpiData.customer.customerName} via UPI QR!`);
+            } else {
+              toast.success(
+                `✅ Collected ₹${payLaterUpiData.amount.toLocaleString("en-IN")} via UPI QR from ${payLaterUpiData.customer.customerName}! Remaining balance: ₹${remaining}.`
+              );
+            }
+            setPayLaterUpiData(null);
+            refreshPayLaterData();
+          }}
+        />
       )}
     </div>
   );

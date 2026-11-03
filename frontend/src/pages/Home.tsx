@@ -9,6 +9,7 @@ import BarcodeBilling from "../components/BarcodeBilling";
 import KhataView from "../components/KhataView";
 import AiAssistantModal from "../components/AiAssistantModal";
 import PayLaterSection from "../components/PayLaterSection";
+import UpiPaymentModal from "../components/UpiPaymentModal";
 import axios from "axios";
 import { apiUrl } from "../config/api";
 import { getStoreProducts, getStoreBills, getStoreCustomers, computeDashboardStats, collectPartialBillPayment } from "../lib/offlineStore";
@@ -162,6 +163,7 @@ export default function Home() {
   const [partialPayBill, setPartialPayBill] = useState<any | null>(null);
   const [partialAmount, setPartialAmount] = useState<string>("");
   const [partialMode, setPartialMode] = useState<"Cash" | "UPI">("Cash");
+  const [partialUpiData, setPartialUpiData] = useState<{ bill: any; amount: number } | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60000);
@@ -296,12 +298,21 @@ export default function Home() {
       toast.error(`Amount exceeds pending balance of ₹${orig}.`);
       return;
     }
-    collectPartialBillPayment(partialPayBill.invoice || partialPayBill.id, amt, partialMode, shopkeeper?.email);
+
+    // If UPI selected, open the dynamic UPI QR code modal for the exact partial/full amount
+    if (partialMode === "UPI") {
+      setPartialUpiData({ bill: partialPayBill, amount: amt });
+      setPartialPayBill(null);
+      return;
+    }
+
+    // Cash settlement
+    collectPartialBillPayment(partialPayBill.invoice || partialPayBill.id, amt, "Cash", shopkeeper?.email);
     const remaining = Math.max(0, orig - amt);
     if (remaining <= 0) {
-      toast.success(`✅ Bill ${partialPayBill.invoice} fully paid! Marked as Paid.`);
+      toast.success(`✅ Bill ${partialPayBill.invoice} fully paid via Cash! Marked as Paid.`);
     } else {
-      toast.success(`✅ Collected ₹${amt}. Remaining balance: ₹${remaining}.`);
+      toast.success(`✅ Collected ₹${amt} via Cash. Remaining balance: ₹${remaining}.`);
     }
     setPartialPayBill(null);
     fetchDashboardData();
@@ -805,11 +816,33 @@ export default function Home() {
                               : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                           }`}
                         >
-                          {m === "Cash" ? "💵 Cash" : "📱 UPI"}
+                          {m === "Cash" ? "💵 Cash" : "📱 UPI / QR"}
                         </button>
                       ))}
                     </div>
                   </div>
+
+                  {/* Dynamic Remaining Balance Preview before generating QR or cash */}
+                  {(() => {
+                    const origStr = String(partialPayBill.amount || "0").replace(/[₹,]/g, "").trim();
+                    const orig = parseFloat(origStr) || 0;
+                    const paying = parseFloat(partialAmount) || 0;
+                    const rem = Math.max(0, orig - paying);
+                    return (
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1.5 text-xs">
+                        <div className="flex items-center justify-between text-slate-600">
+                          <span>Amount paying now ({partialMode}):</span>
+                          <span className="font-bold text-slate-900">₹{paying.toLocaleString("en-IN")}</span>
+                        </div>
+                        <div className="flex items-center justify-between font-bold pt-1.5 border-t border-slate-200">
+                          <span className="text-slate-600">Remaining bill balance:</span>
+                          <span className={rem === 0 ? "text-emerald-600" : "text-amber-700"}>
+                            ₹{rem.toLocaleString("en-IN")} {rem === 0 ? "(Fully Paid)" : ""}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Footer */}
@@ -822,13 +855,57 @@ export default function Home() {
                   </button>
                   <button
                     onClick={handleConfirmPartialPay}
-                    className="flex-[2] rounded-xl bg-amber-500 py-2.5 text-xs font-bold text-white hover:bg-amber-600 transition shadow-md shadow-amber-500/20"
+                    className={`flex-[2] rounded-xl py-2.5 text-xs font-bold text-white transition shadow-md flex items-center justify-center gap-1.5 ${
+                      partialMode === "UPI"
+                        ? "bg-violet-600 hover:bg-violet-700 shadow-violet-600/20"
+                        : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
+                    }`}
                   >
-                    ✓ Confirm Collection
+                    {partialMode === "UPI" ? (
+                      <>
+                        <QrCode className="h-4 w-4" />
+                        Generate UPI QR (₹{partialAmount || 0})
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-4 w-4" />
+                        Confirm Cash Collection
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Dynamic UPI QR Code Modal for partial bill collection */}
+          {partialUpiData && (
+            <UpiPaymentModal
+              amount={partialUpiData.amount}
+              storeName={shopkeeper?.store_name || "SmartQ Store"}
+              upiId={shopkeeper?.upi_id || "9704955713-2@ybl"}
+              invoiceNumber={partialUpiData.bill.invoice}
+              customerName={partialUpiData.bill.customer}
+              onClose={() => setPartialUpiData(null)}
+              onPaymentConfirmed={() => {
+                collectPartialBillPayment(
+                  partialUpiData.bill.invoice || partialUpiData.bill.id,
+                  partialUpiData.amount,
+                  "UPI",
+                  shopkeeper?.email
+                );
+                const origStr = String(partialUpiData.bill.amount || "0").replace(/[₹,]/g, "").trim();
+                const orig = parseFloat(origStr) || 0;
+                const remaining = Math.max(0, orig - partialUpiData.amount);
+                if (remaining <= 0) {
+                  toast.success(`✅ Bill ${partialUpiData.bill.invoice} fully paid via UPI QR! Marked as Paid.`);
+                } else {
+                  toast.success(`✅ Collected ₹${partialUpiData.amount} via UPI QR! Remaining balance: ₹${remaining}.`);
+                }
+                setPartialUpiData(null);
+                fetchDashboardData();
+              }}
+            />
           )}
 
           <section className="mb-7 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40 sm:p-6"><div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><h2 className="font-display text-[16px] font-bold tracking-tight text-slate-950">Quick actions</h2><p className="mt-1 text-xs text-slate-400">Common tasks, one tap away</p></div><span className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-400"><Zap className="h-3.5 w-3.5 text-amber-400" /> Built for speed</span></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{[{ label: "New voice bill", icon: Mic2, tone: "bg-violet-50 text-violet-700", primary: true }, { label: "Scan image", icon: Camera, tone: "bg-blue-50 text-blue-700" }, { label: "Barcode scan", icon: ScanLine, tone: "bg-emerald-50 text-emerald-700" }, { label: "Add product", icon: Package, tone: "bg-amber-50 text-amber-700" }, { label: "Add customer", icon: Users, tone: "bg-rose-50 text-rose-700" }].map(({ label, icon: Icon, tone, primary }) => <button key={label} onClick={() => handleAction(label)} className={`group flex flex-col items-start rounded-xl border p-3.5 text-left transition duration-150 hover:-translate-y-0.5 hover:shadow-md ${primary ? "border-violet-200 bg-violet-600 text-white shadow-lg shadow-violet-600/15 hover:bg-violet-700" : "border-slate-200 bg-slate-50/60 text-slate-700 hover:border-slate-300 hover:bg-white"}`}><div className={`mb-4 flex h-8 w-8 items-center justify-center rounded-lg ${primary ? "bg-white/15 text-white" : tone}`}><Icon className="h-4 w-4" /></div><span className={`text-[11px] font-bold ${primary ? "text-white" : "text-slate-700"}`}>{label}</span><ChevronRight className={`mt-2 h-3.5 w-3.5 transition group-hover:translate-x-0.5 ${primary ? "text-white/60" : "text-slate-300"}`} /></button>)}</div></section>
