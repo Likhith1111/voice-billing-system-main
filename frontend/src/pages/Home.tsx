@@ -11,7 +11,7 @@ import AiAssistantModal from "../components/AiAssistantModal";
 import PayLaterSection from "../components/PayLaterSection";
 import axios from "axios";
 import { apiUrl } from "../config/api";
-import { getStoreProducts, getStoreBills, getStoreCustomers, computeDashboardStats } from "../lib/offlineStore";
+import { getStoreProducts, getStoreBills, getStoreCustomers, computeDashboardStats, collectPartialBillPayment } from "../lib/offlineStore";
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -43,6 +43,9 @@ import {
   ScanLine,
   ShieldCheck,
   BookOpen,
+  Banknote,
+  QrCode,
+  CheckCircle2,
 } from "lucide-react";
 import {
   Area,
@@ -155,6 +158,11 @@ export default function Home() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Partial payment modal state
+  const [partialPayBill, setPartialPayBill] = useState<any | null>(null);
+  const [partialAmount, setPartialAmount] = useState<string>("");
+  const [partialMode, setPartialMode] = useState<"Cash" | "UPI">("Cash");
+
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60000);
     return () => window.clearInterval(timer);
@@ -266,6 +274,38 @@ export default function Home() {
       ...topProducts.map((product) => ({ type: "Product", title: product.name, sub: product.value })),
     ].filter((item) => `${item.title} ${item.sub}`.toLowerCase().includes(query)).slice(0, 5);
   }, [search, recentBills, recentCustomers, topProducts]);
+
+  const handleOpenPartialPay = (bill: any) => {
+    if (bill.status !== "Pending") return;
+    const amtStr = String(bill.amount || "0").replace(/[₹,]/g, "").trim();
+    setPartialAmount(amtStr);
+    setPartialMode("Cash");
+    setPartialPayBill(bill);
+  };
+
+  const handleConfirmPartialPay = () => {
+    if (!partialPayBill) return;
+    const amt = parseFloat(partialAmount);
+    if (!amt || amt <= 0) {
+      toast.error("Please enter a valid payment amount.");
+      return;
+    }
+    const origStr = String(partialPayBill.amount || "0").replace(/[₹,]/g, "").trim();
+    const orig = parseFloat(origStr) || 0;
+    if (amt > orig + 0.01) {
+      toast.error(`Amount exceeds pending balance of ₹${orig}.`);
+      return;
+    }
+    collectPartialBillPayment(partialPayBill.invoice || partialPayBill.id, amt, partialMode, shopkeeper?.email);
+    const remaining = Math.max(0, orig - amt);
+    if (remaining <= 0) {
+      toast.success(`✅ Bill ${partialPayBill.invoice} fully paid! Marked as Paid.`);
+    } else {
+      toast.success(`✅ Collected ₹${amt}. Remaining balance: ₹${remaining}.`);
+    }
+    setPartialPayBill(null);
+    fetchDashboardData();
+  };
 
   const handleNav = (label: string) => {
     setActiveNav(label);
@@ -594,12 +634,11 @@ export default function Home() {
                   </p>
                 ) : (
                   recentBills.slice(0, 5).map((bill) => (
-                    <div 
-                      key={bill.invoice} 
-                      onClick={() => handleNav("Bills")} 
-                      className="flex items-center justify-between p-3.5 active:bg-slate-50 transition"
+                    <div
+                      key={bill.invoice}
+                      className="flex items-center justify-between p-3.5 transition"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3" onClick={() => handleNav("Bills")}>
                         <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold ${avatarStyles[bill.tone] || 'bg-slate-100 text-slate-700'}`}>
                           {bill.initials}
                         </div>
@@ -608,11 +647,20 @@ export default function Home() {
                           <p className="text-[10px] text-slate-400">{bill.invoice} • {bill.time}</p>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex flex-col items-end gap-1">
                         <p className="text-sm font-black text-slate-900">{bill.amount}</p>
-                        <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold ${bill.status === "Paid" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-                          {bill.status}
-                        </span>
+                        {bill.status === "Pending" ? (
+                          <button
+                            onClick={() => handleOpenPartialPay(bill)}
+                            className="inline-flex items-center gap-1 rounded-md bg-amber-500 px-2 py-0.5 text-[9px] font-bold text-white hover:bg-amber-600 transition"
+                          >
+                            ● Pending · Collect
+                          </button>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">
+                            ● {bill.status}
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))
@@ -621,7 +669,7 @@ export default function Home() {
 
               {/* Desktop Recent Bills Table */}
               <div className="overflow-x-auto hidden md:block">
-                <table className="w-full min-w-[620px] text-left">
+                <table className="w-full min-w-[680px] text-left">
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50/60 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
                       <th className="px-5 py-3 font-bold sm:px-6">Invoice</th>
@@ -629,12 +677,13 @@ export default function Home() {
                       <th className="px-3 py-3 font-bold">Amount</th>
                       <th className="px-3 py-3 font-bold">Time</th>
                       <th className="px-3 py-3 font-bold">Status</th>
+                      <th className="px-3 py-3 font-bold">Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {recentBills.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-5 py-8 text-center text-xs text-slate-400">
+                        <td colSpan={6} className="px-5 py-8 text-center text-xs text-slate-400">
                           No bills generated yet. Start billing via Voice, Image, or Barcode!
                         </td>
                       </tr>
@@ -648,12 +697,29 @@ export default function Home() {
                               <span className="whitespace-nowrap text-xs font-semibold text-slate-700">{bill.customer}</span>
                             </div>
                           </td>
-                          <td className="px-3 py-3.5 text-xs font-bold text-slate-900">{bill.amount}</td>
+                          <td className="px-3 py-3.5">
+                            <span className="text-xs font-black text-slate-900">{bill.amount}</span>
+                            {bill.original_amount && bill.original_amount !== bill.amount && (
+                              <span className="ml-1.5 text-[10px] text-slate-400 line-through">{bill.original_amount}</span>
+                            )}
+                          </td>
                           <td className="px-3 py-3.5 text-[11px] text-slate-400">{bill.time}</td>
                           <td className="px-3 py-3.5">
                             <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-[10px] font-bold ${bill.status === "Paid" ? "bg-emerald-50 text-emerald-700" : bill.status === "Pending" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700"}`}>
                               <span className={`h-1.5 w-1.5 rounded-full ${bill.status === "Paid" ? "bg-emerald-500" : bill.status === "Pending" ? "bg-amber-500" : "bg-blue-500"}`} />{bill.status}
                             </span>
+                          </td>
+                          <td className="px-3 py-3.5">
+                            {bill.status === "Pending" ? (
+                              <button
+                                onClick={() => handleOpenPartialPay(bill)}
+                                className="rounded-lg bg-amber-500 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-amber-600 transition shadow-sm"
+                              >
+                                Collect Payment
+                              </button>
+                            ) : (
+                              <span className="text-[10px] text-slate-300">—</span>
+                            )}
                           </td>
                         </tr>
                       ))
@@ -666,6 +732,104 @@ export default function Home() {
 
           {/* Pay Later & Udhar Tracker Section with Multi-Visit Itemized History */}
           <PayLaterSection />
+
+          {/* ── Partial Payment Modal ── */}
+          {partialPayBill && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+              <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-150">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-4 text-white">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold uppercase tracking-wider text-amber-100">Collect Payment</p>
+                    <button onClick={() => setPartialPayBill(null)} className="rounded-full bg-white/20 p-1 hover:bg-white/30 transition">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="mt-2.5 rounded-xl bg-white/15 px-3.5 py-2.5 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-amber-100">Customer</p>
+                      <p className="font-bold text-white text-sm">{partialPayBill.customer}</p>
+                      <p className="text-[10px] text-amber-200">{partialPayBill.invoice}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-amber-100">Pending Balance</p>
+                      <p className="text-xl font-black text-white">{partialPayBill.amount}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div className="p-5 space-y-4">
+                  {/* Amount input */}
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                      Amount Receiving (₹)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg font-bold text-slate-400">₹</span>
+                      <input
+                        type="number"
+                        value={partialAmount}
+                        onChange={(e) => setPartialAmount(e.target.value)}
+                        className="w-full rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-base font-black text-slate-900 outline-none focus:ring-2 focus:ring-amber-400"
+                        placeholder="Enter amount"
+                        autoFocus
+                      />
+                    </div>
+                    {/* Quick preset: full amount */}
+                    <button
+                      type="button"
+                      onClick={() => setPartialAmount(String(partialPayBill.amount).replace(/[₹,]/g, "").trim())}
+                      className="mt-1.5 text-[11px] font-bold text-amber-600 hover:underline"
+                    >
+                      Full amount ({partialPayBill.amount})
+                    </button>
+                  </div>
+
+                  {/* Payment mode */}
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                      Payment Mode
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(["Cash", "UPI"] as const).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setPartialMode(m)}
+                          className={`flex items-center justify-center gap-1.5 rounded-xl border-2 py-2.5 text-xs font-bold transition ${
+                            partialMode === m
+                              ? m === "Cash"
+                                ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                                : "border-violet-500 bg-violet-50 text-violet-700"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                          }`}
+                        >
+                          {m === "Cash" ? "💵 Cash" : "📱 UPI"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="border-t border-slate-100 bg-slate-50 px-5 py-3.5 flex gap-2.5">
+                  <button
+                    onClick={() => setPartialPayBill(null)}
+                    className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmPartialPay}
+                    className="flex-[2] rounded-xl bg-amber-500 py-2.5 text-xs font-bold text-white hover:bg-amber-600 transition shadow-md shadow-amber-500/20"
+                  >
+                    ✓ Confirm Collection
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <section className="mb-7 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40 sm:p-6"><div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><h2 className="font-display text-[16px] font-bold tracking-tight text-slate-950">Quick actions</h2><p className="mt-1 text-xs text-slate-400">Common tasks, one tap away</p></div><span className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-400"><Zap className="h-3.5 w-3.5 text-amber-400" /> Built for speed</span></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{[{ label: "New voice bill", icon: Mic2, tone: "bg-violet-50 text-violet-700", primary: true }, { label: "Scan image", icon: Camera, tone: "bg-blue-50 text-blue-700" }, { label: "Barcode scan", icon: ScanLine, tone: "bg-emerald-50 text-emerald-700" }, { label: "Add product", icon: Package, tone: "bg-amber-50 text-amber-700" }, { label: "Add customer", icon: Users, tone: "bg-rose-50 text-rose-700" }].map(({ label, icon: Icon, tone, primary }) => <button key={label} onClick={() => handleAction(label)} className={`group flex flex-col items-start rounded-xl border p-3.5 text-left transition duration-150 hover:-translate-y-0.5 hover:shadow-md ${primary ? "border-violet-200 bg-violet-600 text-white shadow-lg shadow-violet-600/15 hover:bg-violet-700" : "border-slate-200 bg-slate-50/60 text-slate-700 hover:border-slate-300 hover:bg-white"}`}><div className={`mb-4 flex h-8 w-8 items-center justify-center rounded-lg ${primary ? "bg-white/15 text-white" : tone}`}><Icon className="h-4 w-4" /></div><span className={`text-[11px] font-bold ${primary ? "text-white" : "text-slate-700"}`}>{label}</span><ChevronRight className={`mt-2 h-3.5 w-3.5 transition group-hover:translate-x-0.5 ${primary ? "text-white/60" : "text-slate-300"}`} /></button>)}</div></section>
 

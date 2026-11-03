@@ -7,6 +7,9 @@ import {
   CheckCircle2,
   Sparkles,
   BookOpen,
+  User,
+  Phone,
+  AlertCircle,
 } from "lucide-react";
 
 export type PaymentMode = "Cash" | "UPI" | "Card" | "Credit";
@@ -15,13 +18,15 @@ interface PaymentModeModalProps {
   amount: number;
   invoiceNumber: string;
   customerName: string;
+  customerPhone?: string;
   storeName: string;
   upiId?: string;
   onClose: () => void;
   onSelectPaymentMode: (
     mode: PaymentMode,
     status: "Paid" | "Pending",
-    cashDetails?: { received: number; change: number }
+    cashDetails?: { received: number; change: number },
+    creditCustomer?: { name: string; phone: string }
   ) => void;
 }
 
@@ -29,6 +34,7 @@ export default function PaymentModeModal({
   amount,
   invoiceNumber,
   customerName,
+  customerPhone = "",
   storeName,
   upiId,
   onClose,
@@ -36,6 +42,11 @@ export default function PaymentModeModal({
 }: PaymentModeModalProps) {
   const [selectedMode, setSelectedMode] = useState<PaymentMode>("Cash");
   const [cashReceived, setCashReceived] = useState<number>(amount);
+
+  // Credit-specific mandatory fields
+  const [creditName, setCreditName] = useState(customerName !== "Walk-in Customer" ? customerName : "");
+  const [creditPhone, setCreditPhone] = useState(customerPhone || "");
+  const [creditError, setCreditError] = useState("");
 
   const changeDue = Math.max(0, cashReceived - amount);
 
@@ -52,7 +63,22 @@ export default function PaymentModeModal({
     } else if (selectedMode === "UPI") {
       onSelectPaymentMode("UPI", "Paid");
     } else if (selectedMode === "Credit") {
-      onSelectPaymentMode("Credit", "Pending");
+      // Validate mandatory fields
+      const nameOk = creditName.trim().length >= 2;
+      const phoneOk = /^[6-9]\d{9}$/.test(creditPhone.trim());
+      if (!nameOk || !phoneOk) {
+        setCreditError(
+          !nameOk
+            ? "Customer name is required (min 2 characters)."
+            : "Valid 10-digit mobile number is required for Pay Later."
+        );
+        return;
+      }
+      setCreditError("");
+      onSelectPaymentMode("Credit", "Pending", undefined, {
+        name: creditName.trim(),
+        phone: creditPhone.trim(),
+      });
     }
   };
 
@@ -159,7 +185,7 @@ export default function PaymentModeModal({
             {/* 3. Udhar / Khata */}
             <button
               type="button"
-              onClick={() => setSelectedMode("Credit")}
+              onClick={() => { setSelectedMode("Credit"); setCreditError(""); }}
               className={`flex flex-col items-start p-2.5 rounded-xl border-2 text-left transition-all ${
                 selectedMode === "Credit"
                   ? "border-amber-500 bg-amber-50/70 shadow-sm"
@@ -252,10 +278,61 @@ export default function PaymentModeModal({
           )}
 
           {selectedMode === "Credit" && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3.5 space-y-1.5">
+            <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3.5 space-y-3">
               <div className="flex items-center gap-2 text-amber-900 font-bold text-xs uppercase tracking-wider">
-                <BookOpen className="h-4 w-4 text-amber-600" /> Digital Khata Book Entry
+                <BookOpen className="h-4 w-4 text-amber-600" /> Digital Khata — Pay Later
               </div>
+
+              {/* Mandatory customer info for credit */}
+              <div className="rounded-lg border border-amber-300 bg-white p-3 space-y-2.5">
+                <p className="text-[10px] font-bold text-amber-700 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" /> Customer details are required for Pay Later
+                </p>
+
+                {/* Name */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                    Customer Name *
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <input
+                      type="text"
+                      value={creditName}
+                      onChange={(e) => { setCreditName(e.target.value); setCreditError(""); }}
+                      placeholder="e.g. Ravi Kumar"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                    Mobile Number * (10 digits)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={10}
+                      value={creditPhone}
+                      onChange={(e) => { setCreditPhone(e.target.value.replace(/\D/g, "")); setCreditError(""); }}
+                      placeholder="e.g. 9876543210"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+                    />
+                  </div>
+                </div>
+
+                {creditError && (
+                  <p className="text-[10px] font-bold text-red-600 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" /> {creditError}
+                  </p>
+                )}
+              </div>
+
               <p className="text-xs text-slate-600 leading-relaxed">
                 This bill of <span className="font-bold text-slate-900">₹{amount}</span> will be added as <span className="font-bold text-amber-700">Udhar / Credit</span> in the customer's Khata account. You can send WhatsApp payment reminders anytime with 1 click.
               </p>

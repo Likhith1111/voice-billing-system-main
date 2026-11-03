@@ -355,6 +355,54 @@ export function clearAllStoreBills(email?: string): void {
   }
 }
 
+/**
+ * Collect a partial or full payment against a Pending bill.
+ * Updates the bill's remaining amount and status in localStorage.
+ * Returns the updated bill.
+ */
+export function collectPartialBillPayment(
+  invoiceOrId: string,
+  amountPaid: number,
+  paymentMode: "Cash" | "UPI",
+  email?: string
+): any | null {
+  const storeEmail = (email || "default").toLowerCase().trim();
+  const bills = getStoreBills(storeEmail);
+
+  const idx = bills.findIndex(
+    (b: any) =>
+      b.invoice === invoiceOrId ||
+      b.invoice_number === invoiceOrId ||
+      String(b.id) === String(invoiceOrId)
+  );
+  if (idx === -1) return null;
+
+  const bill = bills[idx];
+  const originalAmountStr = String(bill.amount || "0").replace(/[₹,]/g, "").trim();
+  const originalAmount = parseFloat(originalAmountStr) || 0;
+  const remaining = Math.max(0, originalAmount - amountPaid);
+
+  const updatedBill = {
+    ...bill,
+    amount: `₹${remaining}`,
+    amount_paid: (parseFloat(String(bill.amount_paid || "0").replace(/[₹,]/g, "")) || 0) + amountPaid,
+    original_amount: bill.original_amount || `₹${originalAmount}`,
+    status: remaining <= 0 ? "Paid" : "Pending",
+    payment_mode: remaining <= 0 ? paymentMode : bill.payment_mode,
+    tone: remaining <= 0 ? "emerald" : "amber",
+    partial_payment_note: `Paid ₹${amountPaid} via ${paymentMode} at ${new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }).format(new Date())}`,
+  };
+
+  bills[idx] = updatedBill;
+  localStorage.setItem(`quantum_bills_${storeEmail}`, JSON.stringify(bills));
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("qbill-bill-added", { detail: { email: storeEmail } }));
+  }
+
+  return updatedBill;
+}
+
 // Helper to calculate live top-selling products from actual store bills
 export function computeTopSellingProducts(bills: any[], catalogProducts: ProductItem[] = []): ProductItem[] {
   const products = catalogProducts && catalogProducts.length > 0 ? [...catalogProducts] : DEFAULT_DAILY_PRODUCTS;

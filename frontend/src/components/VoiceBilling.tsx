@@ -344,14 +344,36 @@ export default function VoiceBilling() {
   const handlePaymentModeSelected = async (
       mode: PaymentMode,
       status: "Paid" | "Pending",
-      cashDetails?: { received: number; change: number }
+      cashDetails?: { received: number; change: number },
+      creditCustomer?: { name: string; phone: string }
   ) => {
       setShowPaymentModeModal(false);
+
+      // If Credit mode returned mandatory customer info, update the billing state
+      if (mode === "Credit" && creditCustomer) {
+          if (creditCustomer.name) setBillCustomerName(creditCustomer.name);
+          if (creditCustomer.phone) setBillCustomerPhone(creditCustomer.phone);
+      }
+
       if (mode === "UPI") {
           setShowUpiModal(true);
       } else {
+          // Use credit customer override if provided
+          const resolvedName = (mode === "Credit" && creditCustomer?.name)
+              ? creditCustomer.name
+              : (pendingInvoice?.customerNameToSave || billCustomerName.trim() || "Walk-in Customer");
+          const resolvedPhone = (mode === "Credit" && creditCustomer?.phone)
+              ? creditCustomer.phone
+              : billCustomerPhone.trim();
+          const resolvedInitials = resolvedName !== "Walk-in Customer"
+              ? resolvedName.substring(0, 2).toUpperCase()
+              : "WC";
+
           await saveBillAndClear({
               ...pendingInvoice,
+              customerNameToSave: resolvedName,
+              customerInitials: resolvedInitials,
+              resolvedPhone,
               payment_mode: mode,
               status: status,
           });
@@ -366,11 +388,12 @@ export default function VoiceBilling() {
       customerNameToSave,
       customerInitials,
       grandTotal,
+      resolvedPhone,
       payment_mode = "Cash",
       status = "Paid",
   }: any) => {
       const _now = new Date();
-      const currentPhone = billCustomerPhone.trim();
+      const currentPhone = resolvedPhone !== undefined ? resolvedPhone : billCustomerPhone.trim();
       const billRecord = {
           invoice: invoiceNumber,
           customer: customerNameToSave,
@@ -895,6 +918,7 @@ export default function VoiceBilling() {
                 amount={pendingInvoice.grandTotal}
                 invoiceNumber={pendingInvoice.invoiceNumber}
                 customerName={pendingInvoice.customerNameToSave}
+                customerPhone={billCustomerPhone.trim()}
                 storeName={shopkeeper?.business_name || shopkeeper?.store_name || "SmartQ Store"}
                 upiId={(shopkeeper as any)?.upi_id}
                 onClose={() => setShowPaymentModeModal(false)}
