@@ -1117,12 +1117,20 @@ class KhataView(APIView):
                 customer_map[phone]["total_received"] += amt
                 customer_map[phone]["balance"] -= amt
 
+            items_list = []
+            if e.items_json:
+                try:
+                    items_list = json.loads(e.items_json)
+                except Exception:
+                    items_list = []
+
             customer_map[phone]["entries"].append({
                 "id": e.id,
                 "amount": float(e.amount),
                 "entry_type": e.entry_type,
                 "note": e.note,
                 "bill_invoice": e.bill_invoice,
+                "items": items_list,
                 "created_at": e.created_at.isoformat() if e.created_at else None
             })
 
@@ -1144,6 +1152,7 @@ class KhataView(APIView):
                     "entry_type": e.entry_type,
                     "note": e.note,
                     "bill_invoice": e.bill_invoice,
+                    "items": json.loads(e.items_json) if e.items_json else [],
                     "created_at": e.created_at.isoformat() if e.created_at else None
                 } for e in entries_qs[:30]
             ]
@@ -1164,6 +1173,8 @@ class KhataView(APIView):
         entry_type = request.data.get('entry_type', 'GIVEN')  # GIVEN or RECEIVED
         note = request.data.get('note', '')
         bill_invoice = request.data.get('bill_invoice', '')
+        items = request.data.get('items', [])
+        items_json = json.dumps(items) if items else None
 
         if amount <= 0:
             return Response({"success": False, "error": "Amount must be greater than 0"}, status=400)
@@ -1175,7 +1186,8 @@ class KhataView(APIView):
             amount=amount,
             entry_type=entry_type,
             note=note,
-            bill_invoice=bill_invoice
+            bill_invoice=bill_invoice,
+            items_json=items_json
         )
 
         if shopkeeper and customer_phone:

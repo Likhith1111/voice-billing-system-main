@@ -407,6 +407,7 @@ export default function VoiceBilling() {
                   entryType: "GIVEN",
                   note: `Voice Bill ${invoiceNumber}`,
                   billInvoice: invoiceNumber,
+                  items: items,
               }, shopkeeper?.email);
           } catch (khataErr) {
               console.warn("Khata record notice:", khataErr);

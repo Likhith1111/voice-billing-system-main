@@ -566,7 +566,40 @@ export interface KhataEntry {
   entryType: 'GIVEN' | 'RECEIVED'; // GIVEN = Udhar given, RECEIVED = Payment collected
   note?: string;
   billInvoice?: string;
+  items?: any[];
   date: string;
+}
+
+export interface PayLaterVisit {
+  id: string | number;
+  invoice: string;
+  dateTime: string;
+  date: string;
+  time: string;
+  amount: number;
+  items: Array<{
+    product: string;
+    quantity: number;
+    unit_price: number;
+    total: number;
+  }>;
+  note?: string;
+}
+
+export interface PayLaterCustomer {
+  customerName: string;
+  customerPhone: string;
+  totalDue: number;
+  totalGiven: number;
+  totalRepaid: number;
+  lastDate: string;
+  visitCount: number;
+  visits: PayLaterVisit[];
+  repayments: Array<{
+    amount: number;
+    dateTime: string;
+    note?: string;
+  }>;
 }
 
 export const DEFAULT_KHATA_ENTRIES: KhataEntry[] = [
@@ -576,18 +609,27 @@ export const DEFAULT_KHATA_ENTRIES: KhataEntry[] = [
     customerPhone: "9876543210",
     amount: 450,
     entryType: "GIVEN",
-    note: "Grocery items & pulses",
+    note: "Atta, Dal & Sugar",
     billInvoice: "INV-5120",
+    items: [
+      { product: "Aashirvaad Shudh Chakki Atta 5kg", quantity: 1, unit_price: 240, total: 240 },
+      { product: "Tata Sampann Toor Dal 1kg", quantity: 1, unit_price: 165, total: 165 },
+      { product: "Pure Refined Sugar 1kg", quantity: 1, unit_price: 45, total: 45 }
+    ],
     date: new Date(Date.now() - 86400000 * 2).toISOString(),
   },
   {
     id: 2,
-    customerName: "Priya Patel",
-    customerPhone: "9812345678",
-    amount: 1200,
+    customerName: "Ramesh Sharma",
+    customerPhone: "9876543210",
+    amount: 350,
     entryType: "GIVEN",
-    note: "Monthly rations & oil",
-    billInvoice: "INV-5188",
+    note: "Sunflower Oil & Biscuits",
+    billInvoice: "INV-5125",
+    items: [
+      { product: "Fortune Sunlite Sunflower Oil 1L", quantity: 2, unit_price: 145, total: 290 },
+      { product: "Britannia Good Day Butter 100g", quantity: 2, unit_price: 30, total: 60 }
+    ],
     date: new Date(Date.now() - 86400000 * 1).toISOString(),
   },
   {
@@ -597,7 +639,23 @@ export const DEFAULT_KHATA_ENTRIES: KhataEntry[] = [
     amount: 200,
     entryType: "RECEIVED",
     note: "Cash partial payment",
-    date: new Date(Date.now() - 86400000 * 1).toISOString(),
+    date: new Date(Date.now() - 86400000 * 0.5).toISOString(),
+  },
+  {
+    id: 4,
+    customerName: "Priya Patel",
+    customerPhone: "9812345678",
+    amount: 1186,
+    entryType: "GIVEN",
+    note: "Monthly rations & Tea",
+    billInvoice: "INV-5188",
+    items: [
+      { product: "Fortune Basmati Rice 1kg", quantity: 5, unit_price: 120, total: 600 },
+      { product: "Tata Tea Premium 500g", quantity: 2, unit_price: 250, total: 500 },
+      { product: "Amul Butter 100g", quantity: 1, unit_price: 58, total: 58 },
+      { product: "Tata Salt 1kg", quantity: 1, unit_price: 28, total: 28 }
+    ],
+    date: new Date(Date.now() - 86400000 * 1.5).toISOString(),
   }
 ];
 
@@ -626,6 +684,7 @@ export function recordKhataTransaction(entry: {
   entryType: 'GIVEN' | 'RECEIVED';
   note?: string;
   billInvoice?: string;
+  items?: any[];
 }, email?: string): KhataEntry {
   const list = getStoreKhata(email);
   const newEntry: KhataEntry = {
@@ -636,6 +695,7 @@ export function recordKhataTransaction(entry: {
     entryType: entry.entryType,
     note: entry.note || "",
     billInvoice: entry.billInvoice || "",
+    items: entry.items || [],
     date: new Date().toISOString(),
   };
 
@@ -649,7 +709,232 @@ export function recordKhataTransaction(entry: {
     }, email);
   }
 
+  // Notify listeners to update dashboard
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("qbill-bill-added", { detail: { email } }));
+  }
+
   return newEntry;
+}
+
+// Retrieve structured Pay Later breakdown for every customer with multi-visit history
+export function getStorePayLaterCustomers(email?: string): PayLaterCustomer[] {
+  const khataEntries = getStoreKhata(email);
+  const bills = getStoreBills(email);
+
+  // Map of bills by invoice number for quick item & time lookup
+  const billMap = new Map<string, any>();
+  for (const b of bills) {
+    const inv = b.invoice || b.invoice_number;
+    if (inv) billMap.set(String(inv).toLowerCase(), b);
+  }
+
+  const customerMap: Record<string, {
+    customerName: string;
+    customerPhone: string;
+    totalGiven: number;
+    totalRepaid: number;
+    lastDate: string;
+    visits: PayLaterVisit[];
+    repayments: Array<{ amount: number; dateTime: string; note?: string }>;
+    seenInvoices: Set<string>;
+  }> = {};
+
+  const getOrInitCustomer = (name: string, phone: string) => {
+    const key = (phone || name || "unknown").toLowerCase().trim();
+    if (!customerMap[key]) {
+      customerMap[key] = {
+        customerName: name || "Customer",
+        customerPhone: phone || "",
+        totalGiven: 0,
+        totalRepaid: 0,
+        lastDate: "",
+        visits: [],
+        repayments: [],
+        seenInvoices: new Set<string>(),
+      };
+    }
+    return customerMap[key];
+  };
+
+  // 1. Process Khata Entries
+  for (const entry of khataEntries) {
+    const cust = getOrInitCustomer(entry.customerName, entry.customerPhone);
+    const eDate = new Date(entry.date);
+    const dateFormatted = !isNaN(eDate.getTime())
+      ? eDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+      : "Recent";
+    const timeFormatted = !isNaN(eDate.getTime())
+      ? eDate.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })
+      : "";
+    const dateTimeStr = `${dateFormatted}${timeFormatted ? ` at ${timeFormatted}` : ""}`;
+
+    if (!cust.lastDate || entry.date > cust.lastDate) {
+      cust.lastDate = entry.date;
+    }
+
+    if (entry.entryType === "GIVEN") {
+      cust.totalGiven += entry.amount;
+
+      // Extract items from entry or linked bill
+      let items = Array.isArray(entry.items) && entry.items.length > 0 ? entry.items : [];
+      let invoiceNum = entry.billInvoice || "";
+
+      if ((!items || items.length === 0) && invoiceNum) {
+        const matchingBill = billMap.get(invoiceNum.toLowerCase());
+        if (matchingBill && Array.isArray(matchingBill.items)) {
+          items = matchingBill.items;
+        }
+      }
+
+      if (!items || items.length === 0) {
+        items = [{
+          product: entry.note || "Grocery Items",
+          quantity: 1,
+          unit_price: entry.amount,
+          total: entry.amount,
+        }];
+      }
+
+      const invKey = invoiceNum ? invoiceNum.toLowerCase() : `khata-${entry.id}`;
+      cust.seenInvoices.add(invKey);
+
+      cust.visits.push({
+        id: entry.id,
+        invoice: invoiceNum || `CREDIT-${String(entry.id).slice(-4)}`,
+        dateTime: dateTimeStr,
+        date: dateFormatted,
+        time: timeFormatted,
+        amount: entry.amount,
+        items,
+        note: entry.note,
+      });
+    } else {
+      cust.totalRepaid += entry.amount;
+      cust.repayments.push({
+        amount: entry.amount,
+        dateTime: dateTimeStr,
+        note: entry.note || "Repayment received",
+      });
+    }
+  }
+
+  // 2. Also check any bills marked as Credit/Pending not yet in Khata
+  for (const b of bills) {
+    const isCredit =
+      b.payment_mode === "Credit" ||
+      b.payment_mode === "Udhar" ||
+      b.status === "Pending" ||
+      b.status === "Udhar";
+
+    if (isCredit) {
+      const inv = (b.invoice || b.invoice_number || "").toLowerCase();
+      const cust = getOrInitCustomer(b.customer, b.phone || b.customer_phone || "");
+
+      if (!cust.seenInvoices.has(inv)) {
+        cust.seenInvoices.add(inv);
+        const bDate = b.created_at ? new Date(b.created_at) : new Date();
+        const dateFormatted = !isNaN(bDate.getTime())
+          ? bDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+          : "Recent";
+        const timeFormatted = b.time || (!isNaN(bDate.getTime())
+          ? bDate.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })
+          : "");
+        const amt = parseAmount(b.amount);
+
+        cust.totalGiven += amt;
+        const items = Array.isArray(b.items) && b.items.length > 0 ? b.items : [{
+          product: "Billed Items",
+          quantity: 1,
+          unit_price: amt,
+          total: amt,
+        }];
+
+        cust.visits.push({
+          id: b.id || inv,
+          invoice: b.invoice || b.invoice_number || "INV-CREDIT",
+          dateTime: `${dateFormatted}${timeFormatted ? ` at ${timeFormatted}` : ""}`,
+          date: dateFormatted,
+          time: timeFormatted,
+          amount: amt,
+          items,
+          note: `Invoice ${b.invoice}`,
+        });
+      }
+    }
+  }
+
+  // Build final list with calculated totalDue and visit count
+  const result: PayLaterCustomer[] = Object.values(customerMap).map((c) => {
+    const totalDue = Math.max(0, c.totalGiven - c.totalRepaid);
+    // Sort visits by most recent first
+    c.visits.sort((a, b) => (b.id > a.id ? 1 : -1));
+    return {
+      customerName: c.customerName,
+      customerPhone: c.customerPhone,
+      totalDue,
+      totalGiven: c.totalGiven,
+      totalRepaid: c.totalRepaid,
+      lastDate: c.lastDate,
+      visitCount: c.visits.length,
+      visits: c.visits,
+      repayments: c.repayments,
+    };
+  });
+
+  // Sort customers with highest pending balance first
+  result.sort((a, b) => b.totalDue - a.totalDue);
+  return result;
+}
+
+// Action helper to collect and settle Pay Later payment
+export function settleCustomerPayLater(
+  customerPhone: string,
+  customerName: string,
+  amount: number,
+  paymentMode: "Cash" | "UPI" = "Cash",
+  note: string = "",
+  email?: string
+) {
+  // 1. Record payment in Khata
+  recordKhataTransaction({
+    customerName,
+    customerPhone,
+    amount,
+    entryType: "RECEIVED",
+    note: note || `Collected ₹${amount} via ${paymentMode}`,
+  }, email);
+
+  // 2. If the payment covers bills, mark those bills as Paid
+  try {
+    const bills = getStoreBills(email);
+    let remaining = amount;
+    let modified = false;
+
+    for (const b of bills) {
+      const matchCust =
+        (b.phone && b.phone === customerPhone) ||
+        (b.customer && b.customer.toLowerCase() === customerName.toLowerCase());
+
+      const isUnpaid = b.status === "Pending" || b.status === "Udhar";
+      if (matchCust && isUnpaid && remaining > 0) {
+        const bAmt = parseAmount(b.amount);
+        if (remaining >= bAmt) {
+          b.status = "Paid";
+          b.payment_mode = paymentMode;
+          remaining -= bAmt;
+          modified = true;
+        }
+      }
+    }
+
+    if (modified) {
+      const storeEmail = (email || "default").toLowerCase().trim();
+      localStorage.setItem(`quantum_bills_${storeEmail}`, JSON.stringify(bills));
+    }
+  } catch (err) {
+    console.warn("Bill status settle notice:", err);
+  }
 }
 
 export function getStoreKhataSummary(email?: string) {

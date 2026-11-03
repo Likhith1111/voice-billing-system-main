@@ -33,6 +33,7 @@ class KhataEntry(models.Model):
     entry_type = models.CharField(max_length=20, default='GIVEN')  # 'GIVEN' (Udhar/Credit) or 'RECEIVED' (Payment/Repayment)
     note = models.CharField(max_length=255, blank=True, null=True)
     bill_invoice = models.CharField(max_length=50, blank=True, null=True)
+    items_json = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

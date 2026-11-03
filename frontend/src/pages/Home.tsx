@@ -8,6 +8,7 @@ import ImageBilling from "../components/ImageBilling";
 import BarcodeBilling from "../components/BarcodeBilling";
 import KhataView from "../components/KhataView";
 import AiAssistantModal from "../components/AiAssistantModal";
+import PayLaterSection from "../components/PayLaterSection";
 import axios from "axios";
 import { apiUrl } from "../config/api";
 import { getStoreProducts, getStoreBills, getStoreCustomers, computeDashboardStats } from "../lib/offlineStore";
@@ -662,6 +663,9 @@ export default function Home() {
               </div>
             </div>
           </section>
+
+          {/* Pay Later & Udhar Tracker Section with Multi-Visit Itemized History */}
+          <PayLaterSection />
 
           <section className="mb-7 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40 sm:p-6"><div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><h2 className="font-display text-[16px] font-bold tracking-tight text-slate-950">Quick actions</h2><p className="mt-1 text-xs text-slate-400">Common tasks, one tap away</p></div><span className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-400"><Zap className="h-3.5 w-3.5 text-amber-400" /> Built for speed</span></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{[{ label: "New voice bill", icon: Mic2, tone: "bg-violet-50 text-violet-700", primary: true }, { label: "Scan image", icon: Camera, tone: "bg-blue-50 text-blue-700" }, { label: "Barcode scan", icon: ScanLine, tone: "bg-emerald-50 text-emerald-700" }, { label: "Add product", icon: Package, tone: "bg-amber-50 text-amber-700" }, { label: "Add customer", icon: Users, tone: "bg-rose-50 text-rose-700" }].map(({ label, icon: Icon, tone, primary }) => <button key={label} onClick={() => handleAction(label)} className={`group flex flex-col items-start rounded-xl border p-3.5 text-left transition duration-150 hover:-translate-y-0.5 hover:shadow-md ${primary ? "border-violet-200 bg-violet-600 text-white shadow-lg shadow-violet-600/15 hover:bg-violet-700" : "border-slate-200 bg-slate-50/60 text-slate-700 hover:border-slate-300 hover:bg-white"}`}><div className={`mb-4 flex h-8 w-8 items-center justify-center rounded-lg ${primary ? "bg-white/15 text-white" : tone}`}><Icon className="h-4 w-4" /></div><span className={`text-[11px] font-bold ${primary ? "text-white" : "text-slate-700"}`}>{label}</span><ChevronRight className={`mt-2 h-3.5 w-3.5 transition group-hover:translate-x-0.5 ${primary ? "text-white/60" : "text-slate-300"}`} /></button>)}</div></section>
 
