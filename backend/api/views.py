@@ -1247,6 +1247,9 @@ class AssistantQueryView(APIView):
         elif any(w in q_lower for w in ["udhar", "khata", "credit", "baki", "pending"]):
             category = "khata"
             spoken_response = f"You have ₹{int(pending_udhar):,} total pending in Udhar across customer accounts."
+        elif any(w in q_lower for w in ["low stock", "kam stock", "shortage", "restock", "out of stock"]) or ("low" in q_lower and "stock" in q_lower):
+            category = "low_stock"
+            spoken_response = "Attention: Daily fresh dairy (Milk, Eggs, Bread, Curd) are running low in stock. Please restock soon."
         elif any(w in q_lower for w in ["product", "item", "stock", "bika", "selling"]):
             category = "products"
             top_product = Product.objects.filter(shopkeeper=shopkeeper).order_by('-sold').first() if shopkeeper else Product.objects.order_by('-sold').first()

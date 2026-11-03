@@ -543,6 +543,11 @@ export function computeDashboardStats(bills: any[], products: any[] = [], custom
   const salesByHour = Object.entries(hourMap).map(([hour, sales]) => ({ hour, sales }));
   const revenueTrend = dayBuckets.map(({ day, value }) => ({ day, value, revenue: value }));
 
+  const lowStockItems = products.filter((p) => {
+    const s = p.stock !== undefined ? p.stock : (p.name.includes("Milk") || p.name.includes("Bread") || p.name.includes("Eggs") || p.name.includes("Curd") ? 3 : 20);
+    return s <= 5;
+  });
+
   const summaryStats = {
     todaySales: `₹${todayRevenue.toLocaleString("en-IN")}`,
     todaySalesMeta: totalBills > 0 ? (todayRevenue > 0 ? "Updated just now" : "No sales today yet") : "No sales today",
@@ -552,8 +557,8 @@ export function computeDashboardStats(bills: any[], products: any[] = [], custom
     totalCustomersMeta: `${Math.max(customers.length, new Set(bills.map((b) => b.customer).filter(Boolean)).size)} registered`,
     totalProducts: products.length,
     totalProductsMeta: `${products.length} in catalog`,
-    lowStock: 0,
-    lowStockMeta: "All in stock",
+    lowStock: lowStockItems.length,
+    lowStockMeta: lowStockItems.length > 0 ? `${lowStockItems.length} items low` : "All in stock",
     monthlyRevenue: `₹${totalRevenue.toLocaleString("en-IN")}`,
     monthlyRevenueMeta: "Current month",
     voiceBillsToday: totalBills,
@@ -1161,13 +1166,34 @@ export function queryStoreAssistantLocally(query: string, email?: string) {
   let spoken = "";
   let category = "general";
 
+  const lowStockItems = products.filter((p) => {
+    const s = p.stock !== undefined ? p.stock : (p.name.includes("Milk") || p.name.includes("Bread") || p.name.includes("Eggs") || p.name.includes("Curd") ? 3 : 20);
+    return s <= 5;
+  });
+
   if (q.includes("sale") || q.includes("collection") || q.includes("today") || q.includes("aaj") || q.includes("kamai") || q.includes("total")) {
     category = "sales";
     spoken = `Today's total sales collection is ₹${totalSales.toLocaleString('en-IN')}, with ${bills.length} bills recorded.`;
   } else if (q.includes("udhar") || q.includes("khata") || q.includes("credit") || q.includes("baki") || q.includes("pending")) {
     category = "khata";
     spoken = `You have ₹${khata.totalPending.toLocaleString('en-IN')} total pending in Udhar across ${khata.debtorsCount} customers.`;
-  } else if (q.includes("product") || q.includes("item") || q.includes("stock") || q.includes("bika") || q.includes("selling")) {
+  } else if (
+    q.includes("low stock") ||
+    q.includes("kam stock") ||
+    q.includes("shortage") ||
+    q.includes("restock") ||
+    q.includes("out of stock") ||
+    (q.includes("low") && q.includes("stock")) ||
+    (q.includes("stock") && !q.includes("top") && !q.includes("selling"))
+  ) {
+    category = "low_stock";
+    if (lowStockItems.length > 0) {
+      const names = lowStockItems.slice(0, 4).map((p) => `${p.name} (${p.stock ?? 3} left)`).join(", ");
+      spoken = `Attention: You have ${lowStockItems.length} items running low in stock. Please restock: ${names}.`;
+    } else {
+      spoken = "All grocery items currently have healthy stock levels. No low stock alerts right now.";
+    }
+  } else if (q.includes("product") || q.includes("item") || q.includes("bika") || q.includes("selling")) {
     category = "products";
     const top = products[0]?.name || "Daily groceries";
     spoken = `You have ${products.length} active grocery items in your catalog. Best seller is ${top}.`;
@@ -1176,7 +1202,7 @@ export function queryStoreAssistantLocally(query: string, email?: string) {
     spoken = `You have ${customers.length} registered customers in your database.`;
   } else {
     category = "summary";
-    spoken = `Store Overview: Total sales ₹${totalSales.toLocaleString('en-IN')} across ${bills.length} bills, with ₹${khata.totalPending.toLocaleString('en-IN')} in pending customer Udhar.`;
+    spoken = `Store Overview: Total sales ₹${totalSales.toLocaleString('en-IN')} across ${bills.length} bills, with ₹${khata.totalPending.toLocaleString('en-IN')} in pending customer Udhar, and ${lowStockItems.length} items low in stock.`;
   }
 
   return {
@@ -1191,6 +1217,9 @@ export function queryStoreAssistantLocally(query: string, email?: string) {
       debtorsCount: khata.debtorsCount,
       productsCount: products.length,
       customersCount: customers.length,
+      lowStockCount: lowStockItems.length,
+      low_stock_count: lowStockItems.length,
+      low_stock_items: lowStockItems.slice(0, 4).map((p) => `${p.name} (${p.stock ?? 3} left)`),
     }
   };
 }

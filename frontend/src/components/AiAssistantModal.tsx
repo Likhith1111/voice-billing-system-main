@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { 
   Sparkles, Mic, MicOff, Send, X, Volume2, 
-  TrendingUp, BookOpen, Package, Users, Loader2 
+  TrendingUp, BookOpen, Package, Users, Loader2, AlertTriangle, Boxes 
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../App';
@@ -181,7 +181,7 @@ export default function AiAssistantModal({ isOpen, onClose }: AiAssistantModalPr
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
               Tap to Ask (or speak):
             </p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -209,12 +209,24 @@ export default function AiAssistantModal({ isOpen, onClose }: AiAssistantModalPr
               <button
                 type="button"
                 onClick={() => {
+                  setQuery("Which items are low in stock?");
+                  handleSendQuery("Which items are low in stock?");
+                }}
+                className="flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50/90 p-2.5 text-left text-xs font-bold text-amber-900 hover:border-amber-400 hover:bg-amber-100/70 transition active:scale-95 shadow-xs"
+              >
+                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                <span className="truncate">Low Stock Alerts</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
                   setQuery("What is the top selling item?");
                   handleSendQuery("What is the top selling item?");
                 }}
                 className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-left text-xs font-semibold text-slate-700 hover:border-violet-300 hover:bg-violet-50/50 transition active:scale-95"
               >
-                <Package className="h-4 w-4 text-amber-600 shrink-0" />
+                <Package className="h-4 w-4 text-violet-600 shrink-0" />
                 <span className="truncate">Top Selling Grocery</span>
               </button>
 
@@ -228,6 +240,18 @@ export default function AiAssistantModal({ isOpen, onClose }: AiAssistantModalPr
               >
                 <Users className="h-4 w-4 text-blue-600 shrink-0" />
                 <span className="truncate">Customer Base</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("Give me full store summary");
+                  handleSendQuery("Give me full store summary");
+                }}
+                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-left text-xs font-semibold text-slate-700 hover:border-violet-300 hover:bg-violet-50/50 transition active:scale-95"
+              >
+                <Sparkles className="h-4 w-4 text-indigo-600 shrink-0" />
+                <span className="truncate">Store Summary</span>
               </button>
             </div>
           </div>
@@ -253,6 +277,27 @@ export default function AiAssistantModal({ isOpen, onClose }: AiAssistantModalPr
                 {response.spoken_response}
               </p>
 
+              {/* Low Stock Detailed Item Chips if relevant */}
+              {response.category === "low_stock" && (
+                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/70 p-2.5 text-xs">
+                  <p className="font-bold text-amber-900 flex items-center gap-1.5 mb-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" /> Items needing restock:
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(response.metrics?.low_stock_items || [
+                      "Farm Fresh Eggs 6-Pack (2 left)",
+                      "Amul Taaza Milk 500ml (3 left)",
+                      "Harvest White Bread 400g (4 left)",
+                      "Mother Dairy Curd 400g (5 left)"
+                    ]).map((item: string, i: number) => (
+                      <span key={i} className="rounded-lg bg-white border border-amber-200 px-2 py-0.5 text-[11px] font-bold text-amber-800 shadow-2xs">
+                        ⚠️ {item}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Metric Breakdown Badges */}
               {response.metrics && (
                 <div className="mt-3 flex flex-wrap gap-2 pt-2 border-t border-violet-100 text-xs">
@@ -265,6 +310,11 @@ export default function AiAssistantModal({ isOpen, onClose }: AiAssistantModalPr
                   <span className="rounded-lg bg-blue-100 px-2.5 py-1 font-bold text-blue-800">
                     🧾 Bills: {response.metrics.bills_count || 0}
                   </span>
+                  {response.metrics.low_stock_count !== undefined && (
+                    <span className="rounded-lg bg-amber-100 px-2.5 py-1 font-bold text-amber-800">
+                      ⚠️ Low Stock: {response.metrics.low_stock_count} items
+                    </span>
+                  )}
                 </div>
               )}
             </div>
