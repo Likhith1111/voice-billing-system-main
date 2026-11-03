@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   BookOpen,
   ArrowDownLeft,
-  ChevronDown,
-  ChevronUp,
   MessageSquare,
   Clock,
   Calendar,
@@ -16,6 +14,10 @@ import {
   Search,
   IndianRupee,
   Sparkles,
+  Phone,
+  Layers,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../App";
@@ -30,7 +32,11 @@ import { openWhatsApp } from "../lib/whatsapp";
 export default function PayLaterSection() {
   const { shopkeeper } = useAuth();
   const [payLaterCustomers, setPayLaterCustomers] = useState<PayLaterCustomer[]>([]);
-  const [expandedCustomerKey, setExpandedCustomerKey] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [filterMode, setFilterMode] = useState<"all" | "multi" | "settled">("all");
+
+  // Keep all customer cards open/expanded by default so user sees date, time, and items immediately!
+  const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(new Set());
 
   // Collect Payment Modal State
   const [collectModalCustomer, setCollectModalCustomer] = useState<PayLaterCustomer | null>(null);
@@ -46,27 +52,34 @@ export default function PayLaterSection() {
   useEffect(() => {
     refreshPayLaterData();
 
-    // Re-fetch automatically when bills/khata update
-    const handleBillAdded = () => {
+    const handleUpdate = () => {
       refreshPayLaterData();
     };
 
-    window.addEventListener("qbill-bill-added", handleBillAdded);
-    window.addEventListener("storage", handleBillAdded);
+    window.addEventListener("qbill-bill-added", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
 
     return () => {
-      window.removeEventListener("qbill-bill-added", handleBillAdded);
-      window.removeEventListener("storage", handleBillAdded);
+      window.removeEventListener("qbill-bill-added", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
     };
   }, [shopkeeper?.email]);
 
-  const toggleExpand = (key: string) => {
-    setExpandedCustomerKey((prev) => (prev === key ? null : key));
+  const toggleCollapse = (key: string) => {
+    setCollapsedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
   };
 
   // Open Collect Payment Modal
-  const handleOpenCollect = (cust: PayLaterCustomer, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleOpenCollect = (cust: PayLaterCustomer, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     setCollectModalCustomer(cust);
     setCollectAmount(String(cust.totalDue));
     setCollectMode("Cash");
@@ -103,8 +116,8 @@ export default function PayLaterSection() {
   };
 
   // 1-Click WhatsApp Payment Reminder with item list
-  const handleSendReminder = (cust: PayLaterCustomer, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleSendReminder = (cust: PayLaterCustomer, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     const phone = cust.customerPhone;
     if (!phone) {
       toast.error("Customer phone number not available for WhatsApp reminder.");
@@ -115,22 +128,21 @@ export default function PayLaterSection() {
     const upiId = shopkeeper?.upi_id || "9704955713-2@ybl";
     const upiPayLink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(storeName)}&am=${cust.totalDue}&cu=INR`;
 
-    // Build multi-visit items text
     let visitsSummary = "";
     cust.visits.forEach((v, idx) => {
       const itemsText = v.items
-        .map((i) => `  • ${i.product} (Qty: ${i.quantity}) - ₹${i.total}`)
+        .map((i) => `    • ${i.product} (${i.quantity} units) - ₹${i.total}`)
         .join("\n");
-      visitsSummary += `\n*Visit ${idx + 1} (${v.date}${v.time ? ` at ${v.time}` : ""}) - ₹${v.amount}*\n${itemsText}\n`;
+      visitsSummary += `\n*Visit ${idx + 1}: ${v.date}${v.time ? ` at ${v.time}` : ""} (Invoice ${v.invoice}) - ₹${v.amount}*\n${itemsText}\n`;
     });
 
     const message =
       `Namaste ${cust.customerName} ji 🙏\n\n` +
       `Gentle payment reminder from *${storeName}*.\n` +
-      `Your pending *Pay Later / Udhar* balance is: *₹${cust.totalDue.toLocaleString("en-IN")}*\n` +
-      `Number of Pay Later visits: *${cust.visitCount}*\n` +
+      `Your outstanding *Pay Later / Udhar* balance is: *₹${cust.totalDue.toLocaleString("en-IN")}*\n` +
+      `Total Pay Later visits: *${cust.visitCount}*\n` +
       `---------------------------------\n` +
-      `*Purchased Items Breakdown:*` +
+      `*Itemized Purchases Breakdown:*` +
       `${visitsSummary}\n` +
       `---------------------------------\n` +
       `💳 *Pay easily via UPI:*\n` +
@@ -142,100 +154,180 @@ export default function PayLaterSection() {
     toast.success(`WhatsApp reminder opened for ${cust.customerName}!`);
   };
 
+  // Filter customers
+  const filteredCustomers = useMemo(() => {
+    return payLaterCustomers.filter((c) => {
+      const matchSearch =
+        c.customerName.toLowerCase().includes(search.toLowerCase()) ||
+        c.customerPhone.includes(search);
+
+      if (!matchSearch) return false;
+
+      if (filterMode === "multi") return c.visitCount >= 2;
+      if (filterMode === "settled") return c.totalDue <= 0;
+      return c.totalDue > 0;
+    });
+  }, [payLaterCustomers, search, filterMode]);
+
   const totalOutstandingAll = payLaterCustomers.reduce((acc, c) => acc + c.totalDue, 0);
   const activeDebtorsCount = payLaterCustomers.filter((c) => c.totalDue > 0).length;
 
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40 sm:p-6 mb-7">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+      {/* Live Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
         <div>
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 border border-amber-200">
-              <BookOpen className="h-4 w-4" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-sm shadow-orange-500/20">
+              <BookOpen className="h-5 w-5" />
             </div>
-            <h2 className="font-display text-[16px] font-bold tracking-tight text-slate-950 flex items-center gap-2">
-              Pay Later &amp; Udhar List
-              {activeDebtorsCount > 0 && (
-                <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-extrabold text-rose-700">
-                  {activeDebtorsCount} Pending
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-display text-[16px] font-bold tracking-tight text-slate-950">
+                  Pay Later &amp; Udhar Tracker
+                </h2>
+                <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Active
                 </span>
-              )}
-            </h2>
+                {activeDebtorsCount > 0 && (
+                  <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-[10px] font-extrabold text-rose-700">
+                    {activeDebtorsCount} Pending
+                  </span>
+                )}
+              </div>
+              <p className="mt-0.5 text-xs text-slate-400">
+                Live customer credit with itemized purchases, dates, times &amp; 1-click collection
+              </p>
+            </div>
           </div>
-          <p className="mt-1 text-xs text-slate-400">
-            Track customer credit · Multi-visit itemized breakdown with date, time &amp; instant collection
-          </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="rounded-xl bg-rose-50 border border-rose-100 px-3 py-1.5 text-right">
-            <p className="text-[9px] font-bold uppercase tracking-wider text-rose-500">
-              Total Outstanding
+        <div className="flex items-center gap-2.5">
+          <div className="rounded-2xl bg-gradient-to-br from-rose-50 to-orange-50 border border-rose-100 px-4 py-2 text-right">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-rose-600">
+              Total Outstanding Due
             </p>
-            <p className="text-sm font-black text-rose-700">
+            <p className="text-base sm:text-lg font-black text-rose-700">
               ₹{totalOutstandingAll.toLocaleString("en-IN")}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Customer List */}
-      <div className="mt-4 space-y-3">
-        {payLaterCustomers.length === 0 ? (
-          <div className="py-8 text-center text-slate-400 text-xs">
-            <BookOpen className="mx-auto h-8 w-8 text-slate-300 mb-2" />
-            <p className="font-bold text-slate-600">No Pay Later records</p>
-            <p className="text-[11px] mt-0.5">When customers purchase items on credit, they will appear here.</p>
+      {/* Search and Filters Bar */}
+      <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by customer name or mobile..."
+            className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-3 text-xs outline-none focus:border-amber-400 focus:bg-white"
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setFilterMode("all")}
+            className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+              filterMode === "all"
+                ? "bg-slate-900 text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            All Pending ({activeDebtorsCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterMode("multi")}
+            className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+              filterMode === "multi"
+                ? "bg-amber-600 text-white shadow-sm"
+                : "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200"
+            }`}
+          >
+            ⚡ Multi-Visit (2+ visits)
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterMode("settled")}
+            className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+              filterMode === "settled"
+                ? "bg-slate-900 text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            Settled (₹0)
+          </button>
+        </div>
+      </div>
+
+      {/* Customer Pay Later Cards List */}
+      <div className="mt-5 space-y-4">
+        {filteredCustomers.length === 0 ? (
+          <div className="py-12 text-center text-slate-400 text-xs">
+            <BookOpen className="mx-auto h-9 w-9 text-slate-300 mb-2" />
+            <p className="font-bold text-slate-700 text-sm">No Pay Later records found</p>
+            <p className="text-xs text-slate-400 mt-1">
+              When customers take products on credit, their itemized purchase history will show here live.
+            </p>
           </div>
         ) : (
-          payLaterCustomers.map((cust) => {
+          filteredCustomers.map((cust) => {
             const customerKey = cust.customerPhone || cust.customerName;
-            const isExpanded = expandedCustomerKey === customerKey;
+            const isCollapsed = collapsedKeys.has(customerKey);
             const hasDue = cust.totalDue > 0;
+            const isMultiVisit = cust.visitCount >= 2;
 
             return (
               <div
                 key={customerKey}
-                className="overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-50/50 transition-all hover:border-slate-300 hover:bg-slate-50"
+                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md hover:border-slate-300"
               >
-                {/* Main Customer Row */}
-                <div
-                  onClick={() => toggleExpand(customerKey)}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 cursor-pointer select-none"
-                >
-                  {/* Left: Customer Info */}
+                {/* Customer Top Bar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50/80 border-b border-slate-100">
+                  {/* Left: Identity & Badges */}
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 font-black text-white text-xs shadow-sm">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 font-black text-white text-sm shadow-sm">
                       {cust.customerName
                         ? cust.customerName.substring(0, 2).toUpperCase()
                         : "CU"}
                     </div>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-slate-900 text-xs truncate">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-extrabold text-slate-900 text-sm">
                           {cust.customerName}
-                        </h4>
-                        {/* Multi-Visit Badge */}
-                        <span className="inline-flex items-center gap-1 rounded-md bg-amber-100/80 px-2 py-0.5 text-[10px] font-extrabold text-amber-800">
-                          <Clock className="h-3 w-3 text-amber-600" />
+                        </h3>
+                        {/* Multi-Visit Badge with Active Indicator */}
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-black ${
+                            isMultiVisit
+                              ? "bg-amber-100 text-amber-900 border border-amber-300"
+                              : "bg-slate-200/80 text-slate-700"
+                          }`}
+                        >
+                          <Clock className="h-3 w-3 text-amber-700" />
                           {cust.visitCount} Pay Later {cust.visitCount === 1 ? "visit" : "visits"}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-400 mt-0.5 truncate">
-                        {cust.customerPhone || "No phone registered"}
+                      <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+                        <Phone className="h-3 w-3 text-slate-400" />
+                        {cust.customerPhone || "No mobile registered"}
                       </p>
                     </div>
                   </div>
 
-                  {/* Right: Balance & Action Buttons */}
+                  {/* Right: Total Balance Due & Immediate Actions */}
                   <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 shrink-0">
                     <div className="text-left sm:text-right">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        Balance Due
+                        Total Balance Due
                       </p>
                       <p
-                        className={`text-sm font-black ${
+                        className={`text-base sm:text-lg font-black ${
                           hasDue ? "text-rose-600" : "text-emerald-600"
                         }`}
                       >
@@ -243,107 +335,121 @@ export default function PayLaterSection() {
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-1.5">
                       {hasDue && (
                         <>
                           <button
                             type="button"
                             onClick={(e) => handleSendReminder(cust, e)}
-                            className="flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-bold text-emerald-700 transition hover:bg-emerald-100"
-                            title="Send WhatsApp Reminder"
+                            className="flex items-center gap-1 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100"
+                            title="Send WhatsApp payment reminder"
                           >
-                            <MessageSquare className="h-3 w-3 text-emerald-600" />
-                            <span className="hidden md:inline">WhatsApp</span>
+                            <MessageSquare className="h-3.5 w-3.5 text-emerald-600" />
+                            <span className="hidden sm:inline">WhatsApp</span>
                           </button>
                           <button
                             type="button"
                             onClick={(e) => handleOpenCollect(cust, e)}
-                            className="flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95"
+                            className="flex items-center gap-1 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95"
                           >
                             <ArrowDownLeft className="h-3.5 w-3.5" />
-                            Collect
+                            Collect ₹{cust.totalDue.toLocaleString("en-IN")}
                           </button>
                         </>
                       )}
 
                       <button
                         type="button"
-                        onClick={() => toggleExpand(customerKey)}
-                        className="rounded-xl border border-slate-200 bg-white p-1.5 text-slate-500 hover:bg-slate-100"
-                        title={isExpanded ? "Collapse visits" : "View visits and items"}
+                        onClick={() => toggleCollapse(customerKey)}
+                        className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-100"
+                        title={isCollapsed ? "Expand visit breakdown" : "Collapse breakdown"}
                       >
-                        {isExpanded ? (
-                          <ChevronUp className="h-4 w-4" />
-                        ) : (
+                        {isCollapsed ? (
                           <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronUp className="h-4 w-4" />
                         )}
                       </button>
                     </div>
                   </div>
                 </div>
 
-                {/* Expanded Multi-Visit Breakdown with Date, Time, and Exact Items */}
-                {isExpanded && (
-                  <div className="border-t border-slate-200/80 bg-white p-4 space-y-3 animate-in fade-in duration-150">
+                {/* ACTIVE LIVE ITEM BREAKDOWN (VISIBLE BY DEFAULT) */}
+                {!isCollapsed && (
+                  <div className="p-4 bg-white space-y-3.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                        <Calendar className="h-3.5 w-3.5 text-violet-600" />
-                        Pay Later Visits Breakdown ({cust.visits.length})
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-medium">
-                        Click Collect to record payment
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-100 text-violet-700">
+                          <Layers className="h-3.5 w-3.5" />
+                        </span>
+                        <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-700">
+                          Itemized Visits &amp; Products Taken ({cust.visits.length}{" "}
+                          {cust.visits.length === 1 ? "purchase" : "purchases"})
+                        </h4>
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-400">
+                        Total Credit: ₹{cust.totalGiven.toLocaleString("en-IN")}
                       </span>
                     </div>
 
-                    <div className="space-y-2.5">
+                    {/* Visits Timeline */}
+                    <div className="space-y-3">
                       {cust.visits.map((visit, vIdx) => (
                         <div
                           key={visit.id || vIdx}
-                          className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5"
+                          className="rounded-xl border border-slate-200/70 bg-gradient-to-r from-slate-50/70 via-white to-slate-50/40 p-3.5"
                         >
-                          {/* Visit Header: Date, Time & Amount */}
-                          <div className="flex items-center justify-between border-b border-slate-200/60 pb-2 mb-2">
+                          {/* Visit Meta Header: Number, Date, Time & Invoice */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5 mb-2.5">
                             <div className="flex items-center gap-2">
-                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-600 text-white text-[10px] font-bold">
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-600 text-white text-[10px] font-black">
                                 {vIdx + 1}
                               </span>
                               <div>
-                                <p className="text-xs font-bold text-slate-900">
-                                  {visit.invoice} · {visit.dateTime}
-                                </p>
-                                {visit.note && (
-                                  <p className="text-[10px] text-slate-400">{visit.note}</p>
-                                )}
+                                <span className="font-extrabold text-slate-900 text-xs">
+                                  Visit #{vIdx + 1} · {visit.invoice}
+                                </span>
+                                <span className="ml-2 inline-flex items-center gap-1 text-[11px] font-medium text-slate-500">
+                                  <Calendar className="h-3 w-3 text-slate-400" />
+                                  {visit.date}
+                                  {visit.time && (
+                                    <>
+                                      <span>·</span>
+                                      <Clock className="h-3 w-3 text-slate-400" />
+                                      {visit.time}
+                                    </>
+                                  )}
+                                </span>
                               </div>
                             </div>
-                            <span className="text-xs font-black text-rose-600">
-                              ₹{visit.amount.toLocaleString("en-IN")}
+
+                            <span className="text-xs font-black text-rose-600 self-start sm:self-auto bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-100">
+                              Amount: ₹{visit.amount.toLocaleString("en-IN")}
                             </span>
                           </div>
 
-                          {/* Itemized List for this visit */}
-                          <div className="space-y-1.5">
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                              <Package className="h-3 w-3 text-slate-400" /> Items Taken:
+                          {/* Items Grid for this Visit */}
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1 mb-1.5">
+                              <Package className="h-3 w-3 text-amber-500" /> Products Taken in this
+                              Visit:
                             </p>
-                            <div className="divide-y divide-slate-100 bg-white rounded-lg border border-slate-200/60 overflow-hidden">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                               {visit.items.map((item, iIdx) => (
                                 <div
                                   key={iIdx}
-                                  className="flex items-center justify-between px-3 py-1.5 text-xs hover:bg-slate-50/50"
+                                  className="flex items-center justify-between rounded-lg bg-white border border-slate-200/60 px-3 py-2 text-xs shadow-2xs hover:border-violet-200 transition"
                                 >
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <span className="text-[10px] font-bold text-slate-400">
-                                      {iIdx + 1}.
-                                    </span>
-                                    <span className="font-semibold text-slate-800 truncate">
+                                  <div className="min-w-0 pr-2">
+                                    <p className="font-bold text-slate-800 text-xs truncate">
                                       {item.product}
-                                    </span>
-                                    <span className="text-[10px] text-slate-400 shrink-0">
-                                      (Qty: {item.quantity} × ₹{item.unit_price})
-                                    </span>
+                                    </p>
+                                    <p className="text-[10px] text-slate-400 mt-0.5">
+                                      Qty: <span className="font-bold text-slate-600">{item.quantity}</span> × ₹
+                                      {item.unit_price}
+                                    </p>
                                   </div>
-                                  <span className="font-bold text-slate-900 shrink-0 ml-2">
+                                  <span className="font-extrabold text-slate-900 shrink-0 text-xs">
                                     ₹{item.total || item.quantity * item.unit_price}
                                   </span>
                                 </div>
@@ -356,27 +462,45 @@ export default function PayLaterSection() {
 
                     {/* Repayments History (if any) */}
                     {cust.repayments && cust.repayments.length > 0 && (
-                      <div className="mt-3 pt-2 border-t border-slate-100">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 mb-1.5 flex items-center gap-1">
-                          <CheckCircle2 className="h-3 w-3" /> Repayments Recorded:
+                      <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 mb-1 flex items-center gap-1">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Repayment History:
                         </p>
                         <div className="space-y-1">
                           {cust.repayments.map((rep, rIdx) => (
                             <div
                               key={rIdx}
-                              className="flex items-center justify-between text-xs px-2.5 py-1 rounded-lg bg-emerald-50/60 text-emerald-900 font-medium"
+                              className="flex items-center justify-between text-xs text-emerald-900"
                             >
                               <span>
-                                {rep.note || "Payment received"} · {rep.dateTime}
+                                {rep.note || "Payment received"} ({rep.dateTime})
                               </span>
                               <span className="font-bold text-emerald-700">
-                                -₹{rep.amount}
+                                -₹{rep.amount.toLocaleString("en-IN")}
                               </span>
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
+
+                    {/* Bottom Summary & Collection Bar */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100">
+                      <div className="text-xs text-slate-500">
+                        Total Credit: <span className="font-bold text-slate-800">₹{cust.totalGiven.toLocaleString("en-IN")}</span> · Repaid: <span className="font-bold text-emerald-600">₹{cust.totalRepaid.toLocaleString("en-IN")}</span> · Net Due: <span className="font-black text-rose-600">₹{cust.totalDue.toLocaleString("en-IN")}</span>
+                      </div>
+
+                      {hasDue && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCollect(cust)}
+                          className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition active:scale-95"
+                        >
+                          <ArrowDownLeft className="h-4 w-4" />
+                          Collect Payment for {cust.customerName}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -399,7 +523,7 @@ export default function PayLaterSection() {
                     Collect Pay Later Amount
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Record payment for {collectModalCustomer.customerName}
+                    Record payment from {collectModalCustomer.customerName}
                   </p>
                 </div>
               </div>
@@ -516,4 +640,3 @@ export default function PayLaterSection() {
     </div>
   );
 }
-

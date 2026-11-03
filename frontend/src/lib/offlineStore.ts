@@ -643,6 +643,33 @@ export const DEFAULT_KHATA_ENTRIES: KhataEntry[] = [
   },
   {
     id: 4,
+    customerName: "Likhith",
+    customerPhone: "9704955713",
+    amount: 600,
+    entryType: "GIVEN",
+    note: "Basmati Rice 5kg",
+    billInvoice: "INV-5752",
+    items: [
+      { product: "Fortune Basmati Rice 1kg", quantity: 5, unit_price: 120, total: 600 }
+    ],
+    date: new Date(Date.now() - 86400000 * 1.8).toISOString(),
+  },
+  {
+    id: 5,
+    customerName: "Likhith",
+    customerPhone: "9704955713",
+    amount: 105,
+    entryType: "GIVEN",
+    note: "Amul Milk & Bread",
+    billInvoice: "INV-7376",
+    items: [
+      { product: "Amul Taaza Milk 500ml", quantity: 2, unit_price: 30, total: 60 },
+      { product: "Harvest White Bread 400g", quantity: 1, unit_price: 45, total: 45 }
+    ],
+    date: new Date(Date.now() - 86400000 * 0.8).toISOString(),
+  },
+  {
+    id: 6,
     customerName: "Priya Patel",
     customerPhone: "9812345678",
     amount: 1186,
@@ -665,7 +692,21 @@ export function getStoreKhata(email?: string): KhataEntry[] {
   const stored = localStorage.getItem(key);
   if (stored) {
     try {
-      return JSON.parse(stored);
+      const parsed: KhataEntry[] = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Check if multi-visit entries exist; if not, merge default entries so user has full multi-visit test data
+        const hasMultiVisits = parsed.some(p => p.billInvoice === "INV-5125" || p.billInvoice === "INV-5752");
+        if (hasMultiVisits) return parsed;
+
+        const merged = [...parsed];
+        for (const def of DEFAULT_KHATA_ENTRIES) {
+          if (!merged.some(m => (m.billInvoice && m.billInvoice === def.billInvoice) || m.id === def.id)) {
+            merged.push(def);
+          }
+        }
+        localStorage.setItem(key, JSON.stringify(merged));
+        return merged;
+      }
     } catch {}
   }
   return DEFAULT_KHATA_ENTRIES;
