@@ -516,3 +516,4 @@ export default function PayLaterSection() {
     </div>
   );
 }
+
