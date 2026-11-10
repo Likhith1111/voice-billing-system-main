@@ -25,56 +25,145 @@ export interface ProductItem {
 }
 
 export const DEFAULT_DAILY_PRODUCTS: ProductItem[] = [
-  // Dairy & Breakfast
-  { id: 1, name: "Amul Taaza Milk 500ml", value: "₹30", barcode: "8901262010053", color: "bg-blue-500", width: "45%", sold: "0 sold", price: 30 },
-  { id: 2, name: "Amul Gold Milk 500ml", value: "₹34", barcode: "8901262010060", color: "bg-amber-500", width: "35%", sold: "0 sold", price: 34 },
-  { id: 3, name: "Amul Butter 100g", value: "₹58", barcode: "8901262010015", color: "bg-yellow-500", width: "30%", sold: "0 sold", price: 58 },
-  { id: 4, name: "Harvest White Bread 400g", value: "₹45", barcode: "8901725111221", color: "bg-amber-600", width: "40%", sold: "0 sold", price: 45 },
-  { id: 5, name: "Farm Fresh Eggs 6-Pack", value: "₹50", barcode: "8904000100234", color: "bg-orange-500", width: "25%", sold: "0 sold", price: 50 },
-  { id: 6, name: "Mother Dairy Curd 400g", value: "₹35", barcode: "8901648001024", color: "bg-sky-500", width: "20%", sold: "0 sold", price: 35 },
-  { id: 7, name: "Amul Cheese Slices 200g", value: "₹140", barcode: "8901262020113", color: "bg-yellow-600", width: "15%", sold: "0 sold", price: 140 },
-  { id: 8, name: "Kelloggs Corn Flakes 250g", value: "₹110", barcode: "8901499008123", color: "bg-rose-500", width: "15%", sold: "0 sold", price: 110 },
+  // 1. Dairy, Milk, Eggs & Breakfast
+  { id: 1, name: "Amul Taaza Milk 500ml", value: "₹30", barcode: "8901262010053", color: "bg-blue-500", width: "45%", sold: "0 sold", price: 30, stock: 50 },
+  { id: 2, name: "Amul Gold Milk 500ml", value: "₹34", barcode: "8901262010060", color: "bg-amber-500", width: "35%", sold: "0 sold", price: 34, stock: 45 },
+  { id: 3, name: "Amul Butter 100g", value: "₹58", barcode: "8901262010015", color: "bg-yellow-500", width: "30%", sold: "0 sold", price: 58, stock: 35 },
+  { id: 4, name: "Amul Butter 500g", value: "₹275", barcode: "8901262010022", color: "bg-yellow-600", width: "25%", sold: "0 sold", price: 275, stock: 20 },
+  { id: 5, name: "Amul Pure Ghee Tin 1L", value: "₹610", barcode: "8901262030013", color: "bg-amber-600", width: "20%", sold: "0 sold", price: 610, stock: 15 },
+  { id: 6, name: "Amul Cheese Slices 200g", value: "₹140", barcode: "8901262020113", color: "bg-yellow-600", width: "15%", sold: "0 sold", price: 140, stock: 25 },
+  { id: 7, name: "Harvest White Bread 400g", value: "₹45", barcode: "8901725111221", color: "bg-amber-600", width: "40%", sold: "0 sold", price: 45, stock: 30 },
+  { id: 8, name: "English Oven Brown Bread 400g", value: "₹55", barcode: "8901725111238", color: "bg-amber-700", width: "30%", sold: "0 sold", price: 55, stock: 20 },
+  { id: 9, name: "Farm Fresh Eggs 6-Pack", value: "₹50", barcode: "8904000100234", color: "bg-orange-500", width: "25%", sold: "0 sold", price: 50, stock: 40 },
+  { id: 10, name: "Mother Dairy Curd 400g", value: "₹35", barcode: "8901648001024", color: "bg-sky-500", width: "20%", sold: "0 sold", price: 35, stock: 30 },
+  { id: 11, name: "Kelloggs Corn Flakes 250g", value: "₹110", barcode: "8901499008123", color: "bg-rose-500", width: "15%", sold: "0 sold", price: 110, stock: 20 },
+  { id: 12, name: "Nestle Everyday Dairy Whitener 400g", value: "₹240", barcode: "8901058891019", color: "bg-blue-600", width: "20%", sold: "0 sold", price: 240, stock: 18 },
 
-  // Staples, Atta, Rice & Cooking Essentials
-  { id: 9, name: "Aashirvaad Shudh Chakki Atta 5kg", value: "₹240", barcode: "8901725121015", color: "bg-amber-700", width: "50%", sold: "0 sold", price: 240 },
-  { id: 10, name: "Fortune Basmati Rice 1kg", value: "₹120", barcode: "8906007280014", color: "bg-indigo-500", width: "35%", sold: "0 sold", price: 120 },
-  { id: 11, name: "Tata Sampann Toor Dal 1kg", value: "₹165", barcode: "8901058853116", color: "bg-yellow-700", width: "25%", sold: "0 sold", price: 165 },
-  { id: 12, name: "Tata Sampann Moong Dal 1kg", value: "₹140", barcode: "8901058853123", color: "bg-emerald-600", width: "20%", sold: "0 sold", price: 140 },
-  { id: 13, name: "Fortune Sunlite Sunflower Oil 1L", value: "₹145", barcode: "8906007280021", color: "bg-amber-500", width: "40%", sold: "0 sold", price: 145 },
-  { id: 14, name: "Dhara Mustard Oil 1L", value: "₹155", barcode: "8901648011030", color: "bg-yellow-600", width: "30%", sold: "0 sold", price: 155 },
-  { id: 15, name: "Tata Salt 1kg", value: "₹28", barcode: "8901058852331", color: "bg-cyan-600", width: "60%", sold: "0 sold", price: 28 },
-  { id: 16, name: "Pure Refined Sugar 1kg", value: "₹46", barcode: "8901001001001", color: "bg-slate-400", width: "55%", sold: "0 sold", price: 46 },
+  // 2. Staples, Atta, Rice, Dal & Cooking Essentials
+  { id: 13, name: "Aashirvaad Shudh Chakki Atta 5kg", value: "₹240", barcode: "8901725121015", color: "bg-amber-700", width: "50%", sold: "0 sold", price: 240, stock: 40 },
+  { id: 14, name: "Aashirvaad Select Sharbati Atta 5kg", value: "₹295", barcode: "8901725121022", color: "bg-amber-800", width: "35%", sold: "0 sold", price: 295, stock: 25 },
+  { id: 15, name: "Fortune Chakki Fresh Atta 5kg", value: "₹230", barcode: "8906007280045", color: "bg-amber-600", width: "35%", sold: "0 sold", price: 230, stock: 30 },
+  { id: 16, name: "Fortune Basmati Rice 1kg", value: "₹120", barcode: "8906007280014", color: "bg-indigo-500", width: "35%", sold: "0 sold", price: 120, stock: 35 },
+  { id: 17, name: "Daawat Rozana Super Basmati Rice 5kg", value: "₹450", barcode: "8901537010014", color: "bg-indigo-600", width: "25%", sold: "0 sold", price: 450, stock: 15 },
+  { id: 18, name: "India Gate Basmati Rice Feast 1kg", value: "₹95", barcode: "8906001790014", color: "bg-indigo-700", width: "30%", sold: "0 sold", price: 95, stock: 30 },
+  { id: 19, name: "Tata Sampann Toor Dal 1kg", value: "₹165", barcode: "8901058853116", color: "bg-yellow-700", width: "25%", sold: "0 sold", price: 165, stock: 25 },
+  { id: 20, name: "Tata Sampann Moong Dal 1kg", value: "₹140", barcode: "8901058853123", color: "bg-emerald-600", width: "20%", sold: "0 sold", price: 140, stock: 25 },
+  { id: 21, name: "Tata Sampann Chana Dal 1kg", value: "₹115", barcode: "8901058853130", color: "bg-amber-600", width: "25%", sold: "0 sold", price: 115, stock: 25 },
+  { id: 22, name: "Tata Sampann Urad Dal 1kg", value: "₹160", barcode: "8901058853147", color: "bg-stone-600", width: "20%", sold: "0 sold", price: 160, stock: 20 },
+  { id: 23, name: "Fortune Sunlite Sunflower Oil 1L", value: "₹145", barcode: "8906007280021", color: "bg-amber-500", width: "40%", sold: "0 sold", price: 145, stock: 40 },
+  { id: 24, name: "Saffola Gold Pro Healthy Oil 1L", value: "₹165", barcode: "8901088011012", color: "bg-amber-600", width: "30%", sold: "0 sold", price: 165, stock: 30 },
+  { id: 25, name: "Dhara Mustard Oil 1L", value: "₹155", barcode: "8901648011030", color: "bg-yellow-600", width: "30%", sold: "0 sold", price: 155, stock: 35 },
+  { id: 26, name: "Gemini Sunflower Oil 1L", value: "₹140", barcode: "8906012450013", color: "bg-yellow-500", width: "25%", sold: "0 sold", price: 140, stock: 25 },
+  { id: 27, name: "Tata Salt 1kg", value: "₹28", barcode: "8901058852331", color: "bg-cyan-600", width: "60%", sold: "0 sold", price: 28, stock: 60 },
+  { id: 28, name: "Pure Refined Sugar 1kg", value: "₹46", barcode: "8901001001001", color: "bg-slate-400", width: "55%", sold: "0 sold", price: 46, stock: 50 },
 
-  // Tea, Coffee, Biscuits & Snacks
-  { id: 17, name: "Tata Tea Premium 500g", value: "₹250", barcode: "8901058851013", color: "bg-emerald-700", width: "35%", sold: "0 sold", price: 250 },
-  { id: 18, name: "Red Label Tea 250g", value: "₹135", barcode: "8901030383014", color: "bg-rose-600", width: "30%", sold: "0 sold", price: 135 },
-  { id: 19, name: "Nescafe Classic Coffee 50g", value: "₹185", barcode: "8901058862019", color: "bg-amber-900", width: "20%", sold: "0 sold", price: 185 },
-  { id: 20, name: "Parle-G Gold Biscuits 250g", value: "₹25", barcode: "8901719101016", color: "bg-yellow-500", width: "70%", sold: "0 sold", price: 25 },
-  { id: 21, name: "Britannia Good Day Butter 100g", value: "₹30", barcode: "8901063012010", color: "bg-blue-600", width: "50%", sold: "0 sold", price: 30 },
-  { id: 22, name: "Britannia Marie Gold 250g", value: "₹35", barcode: "8901063013024", color: "bg-amber-500", width: "45%", sold: "0 sold", price: 35 },
-  { id: 23, name: "Maggi 2-Minute Noodles 4-Pack", value: "₹56", barcode: "8901058842011", color: "bg-yellow-500", width: "65%", sold: "0 sold", price: 56 },
-  { id: 24, name: "Lays Magic Masala Chips 50g", value: "₹20", barcode: "8901491101021", color: "bg-blue-500", width: "60%", sold: "0 sold", price: 20 },
+  // 3. Spices, Masalas, Pickles & Cooking Sauces
+  { id: 29, name: "Everest Turmeric Powder 100g", value: "₹34", barcode: "8901786101018", color: "bg-yellow-500", width: "40%", sold: "0 sold", price: 34, stock: 40 },
+  { id: 30, name: "Everest Tikhalal Chilli Powder 100g", value: "₹48", barcode: "8901786102015", color: "bg-red-600", width: "40%", sold: "0 sold", price: 48, stock: 40 },
+  { id: 31, name: "Everest Coriander Powder 100g", value: "₹38", barcode: "8901786103012", color: "bg-emerald-700", width: "35%", sold: "0 sold", price: 38, stock: 35 },
+  { id: 32, name: "Everest Garam Masala 100g", value: "₹85", barcode: "8901786104019", color: "bg-amber-800", width: "30%", sold: "0 sold", price: 85, stock: 30 },
+  { id: 33, name: "MDH Chana Masala 100g", value: "₹82", barcode: "8901594101016", color: "bg-orange-700", width: "30%", sold: "0 sold", price: 82, stock: 30 },
+  { id: 34, name: "MDH Kitchen King Masala 100g", value: "₹85", barcode: "8901594102013", color: "bg-amber-700", width: "30%", sold: "0 sold", price: 85, stock: 30 },
+  { id: 35, name: "MDH Deggi Mirch 100g", value: "₹92", barcode: "8901594103010", color: "bg-rose-700", width: "25%", sold: "0 sold", price: 92, stock: 25 },
+  { id: 36, name: "Catch Table Salt Sprinkler 200g", value: "₹35", barcode: "8901192101014", color: "bg-cyan-500", width: "30%", sold: "0 sold", price: 35, stock: 30 },
+  { id: 37, name: "Catch Black Pepper Sprinkler 100g", value: "₹95", barcode: "8901192102011", color: "bg-stone-700", width: "25%", sold: "0 sold", price: 95, stock: 25 },
+  { id: 38, name: "Maggi Masala-ae-Magic Pack of 10", value: "₹50", barcode: "8901058842059", color: "bg-yellow-600", width: "40%", sold: "0 sold", price: 50, stock: 40 },
+  { id: 39, name: "Kissan Fresh Tomato Ketchup 500g", value: "₹120", barcode: "8901030461019", color: "bg-red-600", width: "25%", sold: "0 sold", price: 120, stock: 25 },
+  { id: 40, name: "Maggi Rich Tomato Ketchup 500g", value: "₹115", barcode: "8901058871011", color: "bg-rose-600", width: "25%", sold: "0 sold", price: 115, stock: 25 },
+  { id: 41, name: "Chings Secret Schezwan Chutney 250g", value: "₹85", barcode: "8901595102012", color: "bg-red-700", width: "30%", sold: "0 sold", price: 85, stock: 30 },
 
-  // Soaps, Oral & Personal Care
-  { id: 25, name: "Dettol Original Soap 75g", value: "₹38", barcode: "8901396112012", color: "bg-emerald-600", width: "40%", sold: "0 sold", price: 38 },
-  { id: 26, name: "Lifebuoy Total Soap 125g", value: "₹36", barcode: "8901030391026", color: "bg-rose-500", width: "35%", sold: "0 sold", price: 36 },
-  { id: 27, name: "Colgate Strong Teeth 100g", value: "₹62", barcode: "8901314010014", color: "bg-rose-600", width: "45%", sold: "0 sold", price: 62 },
-  { id: 28, name: "Close Up Red Hot Gel 80g", value: "₹55", barcode: "8901030401015", color: "bg-red-600", width: "25%", sold: "0 sold", price: 55 },
-  { id: 29, name: "Clinic Plus Shampoo 175ml", value: "₹110", barcode: "8901030412011", color: "bg-blue-600", width: "30%", sold: "0 sold", price: 110 },
-  { id: 30, name: "Head & Shoulders Shampoo 180ml", value: "₹175", barcode: "8901314510026", color: "bg-sky-700", width: "20%", sold: "0 sold", price: 175 },
+  // 4. Biscuits, Namkeen & Snacks
+  { id: 42, name: "Parle-G Gold Biscuits 250g", value: "₹25", barcode: "8901719101016", color: "bg-yellow-500", width: "70%", sold: "0 sold", price: 25, stock: 80 },
+  { id: 43, name: "Parle Monaco Salted Crackers 200g", value: "₹35", barcode: "8901719102020", color: "bg-yellow-600", width: "45%", sold: "0 sold", price: 35, stock: 45 },
+  { id: 44, name: "Parle Krackjack Biscuits 200g", value: "₹35", barcode: "8901719103010", color: "bg-amber-500", width: "40%", sold: "0 sold", price: 35, stock: 40 },
+  { id: 45, name: "Parle Hide & Seek Choco Chip 100g", value: "₹40", barcode: "8901719104055", color: "bg-stone-800", width: "35%", sold: "0 sold", price: 40, stock: 35 },
+  { id: 46, name: "Britannia Good Day Butter 100g", value: "₹30", barcode: "8901063012010", color: "bg-blue-600", width: "50%", sold: "0 sold", price: 30, stock: 60 },
+  { id: 47, name: "Britannia Good Day Cashew 100g", value: "₹35", barcode: "8901063012027", color: "bg-amber-600", width: "50%", sold: "0 sold", price: 35, stock: 50 },
+  { id: 48, name: "Britannia Marie Gold 250g", value: "₹35", barcode: "8901063013024", color: "bg-amber-500", width: "45%", sold: "0 sold", price: 35, stock: 55 },
+  { id: 49, name: "Britannia Bourbon Chocolate 120g", value: "₹30", barcode: "8901063014038", color: "bg-stone-700", width: "45%", sold: "0 sold", price: 30, stock: 45 },
+  { id: 50, name: "Britannia Little Hearts 75g", value: "₹25", barcode: "8901063015028", color: "bg-rose-500", width: "40%", sold: "0 sold", price: 25, stock: 40 },
+  { id: 51, name: "Sunfeast Dark Fantasy Choco Fills 75g", value: "₹40", barcode: "8901725141020", color: "bg-stone-900", width: "35%", sold: "0 sold", price: 40, stock: 35 },
+  { id: 52, name: "Oreo Original Vanilla Cream 120g", value: "₹40", barcode: "8901233024041", color: "bg-blue-700", width: "45%", sold: "0 sold", price: 40, stock: 45 },
+  { id: 53, name: "Maggi 2-Minute Noodles 4-Pack", value: "₹56", barcode: "8901058842011", color: "bg-yellow-500", width: "65%", sold: "0 sold", price: 56, stock: 60 },
+  { id: 54, name: "Sunfeast YiPPee Magic Masala Noodles 240g", value: "₹52", barcode: "8901725151012", color: "bg-orange-600", width: "40%", sold: "0 sold", price: 52, stock: 40 },
+  { id: 55, name: "Lays Magic Masala Chips 50g", value: "₹20", barcode: "8901491101021", color: "bg-blue-500", width: "60%", sold: "0 sold", price: 20, stock: 65 },
+  { id: 56, name: "Lays Classic Salted Chips 50g", value: "₹20", barcode: "8901491101014", color: "bg-yellow-400", width: "50%", sold: "0 sold", price: 20, stock: 50 },
+  { id: 57, name: "Lays Spanish Tomato Tango 50g", value: "₹20", barcode: "8901491101038", color: "bg-red-500", width: "50%", sold: "0 sold", price: 20, stock: 50 },
+  { id: 58, name: "Kurkure Masala Munch 82g", value: "₹20", barcode: "8901491001086", color: "bg-orange-500", width: "60%", sold: "0 sold", price: 20, stock: 60 },
+  { id: 59, name: "Haldirams Nagpur Aloo Bhujia 150g", value: "₹45", barcode: "8904004400477", color: "bg-amber-600", width: "50%", sold: "0 sold", price: 45, stock: 50 },
+  { id: 60, name: "Haldirams Bhujia Sev 200g", value: "₹55", barcode: "8904004401030", color: "bg-yellow-600", width: "40%", sold: "0 sold", price: 55, stock: 40 },
+  { id: 61, name: "Haldirams Khatta Meetha 200g", value: "₹55", barcode: "8904004401047", color: "bg-orange-600", width: "35%", sold: "0 sold", price: 55, stock: 35 },
 
-  // Household & Cleaning
-  { id: 31, name: "Surf Excel Easy Wash Detergent 1kg", value: "₹135", barcode: "8901030022012", color: "bg-indigo-600", width: "45%", sold: "0 sold", price: 135 },
-  { id: 32, name: "Rin Detergent Bar 250g", value: "₹20", barcode: "8901030031014", color: "bg-blue-700", width: "50%", sold: "0 sold", price: 20 },
-  { id: 33, name: "Vim Dishwash Gel 250ml", value: "₹55", barcode: "8901030421013", color: "bg-lime-600", width: "40%", sold: "0 sold", price: 55 },
-  { id: 34, name: "Harpic Power Plus 500ml", value: "₹95", barcode: "8901396211029", color: "bg-rose-700", width: "30%", sold: "0 sold", price: 95 },
+  // 5. Beverages, Tea, Coffee & Cold Drinks
+  { id: 62, name: "Tata Tea Premium 500g", value: "₹250", barcode: "8901058851013", color: "bg-emerald-700", width: "35%", sold: "0 sold", price: 250, stock: 30 },
+  { id: 63, name: "Red Label Tea 250g", value: "₹135", barcode: "8901030383014", color: "bg-rose-600", width: "30%", sold: "0 sold", price: 135, stock: 35 },
+  { id: 64, name: "Taj Mahal Tea 250g", value: "₹190", barcode: "8901030384028", color: "bg-blue-800", width: "20%", sold: "0 sold", price: 190, stock: 20 },
+  { id: 65, name: "Wagh Bakri CTC Tea 500g", value: "₹270", barcode: "8906001020012", color: "bg-emerald-800", width: "25%", sold: "0 sold", price: 270, stock: 25 },
+  { id: 66, name: "Nescafe Classic Coffee 50g", value: "₹185", barcode: "8901058862019", color: "bg-amber-900", width: "20%", sold: "0 sold", price: 185, stock: 30 },
+  { id: 67, name: "BRU Instant Coffee 50g", value: "₹120", barcode: "8901030372018", color: "bg-yellow-800", width: "25%", sold: "0 sold", price: 120, stock: 25 },
+  { id: 68, name: "Cadbury Bournvita 500g", value: "₹245", barcode: "8901233031025", color: "bg-orange-700", width: "20%", sold: "0 sold", price: 245, stock: 20 },
+  { id: 69, name: "Horlicks Classic Malt 500g", value: "₹260", barcode: "8901571001018", color: "bg-blue-600", width: "20%", sold: "0 sold", price: 260, stock: 20 },
+  { id: 70, name: "Coca-Cola Bottle 750ml", value: "₹40", barcode: "8901764012237", color: "bg-red-600", width: "45%", sold: "0 sold", price: 40, stock: 45 },
+  { id: 71, name: "Thums Up Bottle 750ml", value: "₹40", barcode: "8901764022236", color: "bg-blue-900", width: "50%", sold: "0 sold", price: 40, stock: 50 },
+  { id: 72, name: "Sprite Bottle 750ml", value: "₹40", barcode: "8901764032235", color: "bg-emerald-600", width: "40%", sold: "0 sold", price: 40, stock: 40 },
+  { id: 73, name: "Maaza Mango Drink 600ml", value: "₹42", barcode: "8901764041214", color: "bg-amber-500", width: "45%", sold: "0 sold", price: 42, stock: 45 },
+  { id: 74, name: "Frooti Mango Drink 160ml", value: "₹15", barcode: "8902579103028", color: "bg-yellow-500", width: "60%", sold: "0 sold", price: 15, stock: 60 },
+  { id: 75, name: "Bisleri Mineral Water 1L", value: "₹20", barcode: "8906014400122", color: "bg-teal-500", width: "80%", sold: "0 sold", price: 20, stock: 80 },
+  { id: 76, name: "Kinley Mineral Water 1L", value: "₹20", barcode: "8901764051015", color: "bg-cyan-600", width: "60%", sold: "0 sold", price: 20, stock: 60 },
 
-  // Fresh Vegetables / Staples
-  { id: 35, name: "Fresh Onions 1kg", value: "₹35", barcode: "8900000000018", color: "bg-purple-600", width: "70%", sold: "0 sold", price: 35 },
-  { id: 36, name: "Fresh Potatoes 1kg", value: "₹30", barcode: "8900000000025", color: "bg-amber-600", width: "75%", sold: "0 sold", price: 30 },
-  { id: 37, name: "Fresh Tomatoes 1kg", value: "₹40", barcode: "8900000000032", color: "bg-rose-500", width: "65%", sold: "0 sold", price: 40 },
-  { id: 38, name: "Fresh Green Chillies 250g", value: "₹20", barcode: "8900000000049", color: "bg-emerald-500", width: "50%", sold: "0 sold", price: 20 },
-  { id: 39, name: "Fresh Ginger 250g", value: "₹30", barcode: "8900000000056", color: "bg-amber-700", width: "45%", sold: "0 sold", price: 30 },
+  // 6. Chocolates & Confectionery
+  { id: 77, name: "Cadbury Dairy Milk Chocolate 50g", value: "₹45", barcode: "8901233010020", color: "bg-purple-700", width: "60%", sold: "0 sold", price: 45, stock: 60 },
+  { id: 78, name: "Cadbury 5 Star Bar 40g", value: "₹20", barcode: "8901233012017", color: "bg-amber-700", width: "50%", sold: "0 sold", price: 20, stock: 50 },
+  { id: 79, name: "Nestle KitKat 4-Finger 38g", value: "₹30", barcode: "8901058863023", color: "bg-red-600", width: "50%", sold: "0 sold", price: 30, stock: 50 },
+  { id: 80, name: "Nestle Munch Crunchy Bar 25g", value: "₹10", barcode: "8901058864013", color: "bg-blue-600", width: "70%", sold: "0 sold", price: 10, stock: 70 },
+  { id: 81, name: "Cadbury Dairy Milk Silk 60g", value: "₹80", barcode: "8901233013014", color: "bg-purple-800", width: "30%", sold: "0 sold", price: 80, stock: 30 },
+  { id: 82, name: "Cadbury Gems Surprise Ball 23g", value: "₹25", barcode: "8901233014011", color: "bg-indigo-600", width: "40%", sold: "0 sold", price: 25, stock: 40 },
+
+  // 7. Soaps, Oral, Hair & Personal Care
+  { id: 83, name: "Dettol Original Soap 75g", value: "₹38", barcode: "8901396112012", color: "bg-emerald-600", width: "40%", sold: "0 sold", price: 38, stock: 50 },
+  { id: 84, name: "Lifebuoy Total Soap 125g", value: "₹36", barcode: "8901030391026", color: "bg-rose-500", width: "35%", sold: "0 sold", price: 36, stock: 45 },
+  { id: 85, name: "Dove Cream Beauty Bar 100g", value: "₹68", barcode: "8901030392023", color: "bg-blue-400", width: "35%", sold: "0 sold", price: 68, stock: 35 },
+  { id: 86, name: "Lux Velvet Glow Rose Soap 100g", value: "₹42", barcode: "8901030393013", color: "bg-pink-500", width: "40%", sold: "0 sold", price: 42, stock: 40 },
+  { id: 87, name: "Pears Pure & Gentle Soap 125g", value: "₹75", barcode: "8901030394010", color: "bg-amber-500", width: "30%", sold: "0 sold", price: 75, stock: 30 },
+  { id: 88, name: "Cinthol Original Deodorant Soap 100g", value: "₹45", barcode: "8901023011016", color: "bg-red-600", width: "35%", sold: "0 sold", price: 45, stock: 35 },
+  { id: 89, name: "Colgate Strong Teeth 100g", value: "₹62", barcode: "8901314010014", color: "bg-rose-600", width: "45%", sold: "0 sold", price: 62, stock: 50 },
+  { id: 90, name: "Close Up Red Hot Gel 80g", value: "₹55", barcode: "8901030401015", color: "bg-red-600", width: "25%", sold: "0 sold", price: 55, stock: 40 },
+  { id: 91, name: "Dabur Red Ayurvedic Toothpaste 150g", value: "₹75", barcode: "8901207011015", color: "bg-red-700", width: "35%", sold: "0 sold", price: 75, stock: 35 },
+  { id: 92, name: "Sensodyne Fresh Mint Toothpaste 75g", value: "₹145", barcode: "8901571011017", color: "bg-blue-600", width: "25%", sold: "0 sold", price: 145, stock: 25 },
+  { id: 93, name: "Clinic Plus Shampoo 175ml", value: "₹110", barcode: "8901030412011", color: "bg-blue-600", width: "30%", sold: "0 sold", price: 110, stock: 35 },
+  { id: 94, name: "Head & Shoulders Shampoo 180ml", value: "₹175", barcode: "8901314510026", color: "bg-sky-700", width: "20%", sold: "0 sold", price: 175, stock: 25 },
+  { id: 95, name: "Parachute 100% Coconut Hair Oil 200ml", value: "₹85", barcode: "8901088021011", color: "bg-blue-500", width: "45%", sold: "0 sold", price: 85, stock: 45 },
+  { id: 96, name: "Dabur Amla Hair Oil 180ml", value: "₹95", barcode: "8901207021014", color: "bg-emerald-700", width: "35%", sold: "0 sold", price: 95, stock: 35 },
+  { id: 97, name: "Lifebuoy Handwash Refill 185ml", value: "₹45", barcode: "8901030431012", color: "bg-rose-600", width: "40%", sold: "0 sold", price: 45, stock: 40 },
+  { id: 98, name: "Dettol Liquid Handwash Pump 200ml", value: "₹99", barcode: "8901396121014", color: "bg-emerald-600", width: "30%", sold: "0 sold", price: 99, stock: 30 },
+  { id: 99, name: "Dettol Antiseptic Liquid 125ml", value: "₹88", barcode: "8901396131013", color: "bg-amber-600", width: "30%", sold: "0 sold", price: 88, stock: 30 },
+  { id: 100, name: "Savlon Antiseptic Liquid 100ml", value: "₹42", barcode: "8901725161011", color: "bg-orange-600", width: "30%", sold: "0 sold", price: 42, stock: 30 },
+  { id: 101, name: "Vaseline Petroleum Jelly 42g", value: "₹45", barcode: "8901030491016", color: "bg-blue-500", width: "35%", sold: "0 sold", price: 45, stock: 35 },
+  { id: 102, name: "Nivea Creme Moisturizer 100ml", value: "₹140", barcode: "8904256001017", color: "bg-blue-700", width: "25%", sold: "0 sold", price: 140, stock: 25 },
+
+  // 8. Household & Cleaning
+  { id: 103, name: "Surf Excel Easy Wash Detergent 1kg", value: "₹135", barcode: "8901030022012", color: "bg-indigo-600", width: "45%", sold: "0 sold", price: 135, stock: 40 },
+  { id: 104, name: "Ariel Matic Front Load Detergent 1kg", value: "₹240", barcode: "8901314810010", color: "bg-blue-700", width: "25%", sold: "0 sold", price: 240, stock: 25 },
+  { id: 105, name: "Tide Plus Extra Power Detergent 1kg", value: "₹125", barcode: "8901314820019", color: "bg-orange-500", width: "35%", sold: "0 sold", price: 125, stock: 35 },
+  { id: 106, name: "Rin Detergent Bar 250g", value: "₹20", barcode: "8901030031014", color: "bg-blue-700", width: "50%", sold: "0 sold", price: 20, stock: 60 },
+  { id: 107, name: "Wheel 2in1 Detergent Powder 1kg", value: "₹72", barcode: "8901030041013", color: "bg-emerald-600", width: "40%", sold: "0 sold", price: 72, stock: 40 },
+  { id: 108, name: "Comfort Fabric Conditioner 220ml", value: "₹65", barcode: "8901030051012", color: "bg-sky-500", width: "30%", sold: "0 sold", price: 65, stock: 30 },
+  { id: 109, name: "Vim Dishwash Gel 250ml", value: "₹55", barcode: "8901030421013", color: "bg-lime-600", width: "40%", sold: "0 sold", price: 55, stock: 45 },
+  { id: 110, name: "Vim Lemon Dishwash Bar 135g", value: "₹10", barcode: "8901030422010", color: "bg-lime-500", width: "75%", sold: "0 sold", price: 10, stock: 75 },
+  { id: 111, name: "Pril Dishwashing Liquid Lime 225ml", value: "₹55", barcode: "8901399011015", color: "bg-emerald-500", width: "35%", sold: "0 sold", price: 55, stock: 35 },
+  { id: 112, name: "Harpic Power Plus 500ml", value: "₹95", barcode: "8901396211029", color: "bg-rose-700", width: "30%", sold: "0 sold", price: 95, stock: 40 },
+  { id: 113, name: "Colin Glass Cleaner 500ml", value: "₹105", barcode: "8901396221011", color: "bg-cyan-500", width: "30%", sold: "0 sold", price: 105, stock: 30 },
+  { id: 114, name: "Lizol Floor Cleaner 500ml", value: "₹110", barcode: "8901396231010", color: "bg-red-500", width: "35%", sold: "0 sold", price: 110, stock: 35 },
+  { id: 115, name: "Good Knight Gold Flash Refill 45ml", value: "₹82", barcode: "8901023021015", color: "bg-red-600", width: "40%", sold: "0 sold", price: 82, stock: 40 },
+  { id: 116, name: "All Out Ultra Mosquito Refill 45ml", value: "₹80", barcode: "8901198011010", color: "bg-blue-600", width: "35%", sold: "0 sold", price: 80, stock: 35 },
+  { id: 117, name: "Odonil Room Air Freshener 50g", value: "₹55", barcode: "8901207031013", color: "bg-purple-600", width: "35%", sold: "0 sold", price: 55, stock: 35 },
+
+  // 9. Fresh Daily Vegetables & Produce
+  { id: 118, name: "Fresh Onions 1kg", value: "₹35", barcode: "8900000000018", color: "bg-purple-600", width: "70%", sold: "0 sold", price: 35, stock: 90 },
+  { id: 119, name: "Fresh Potatoes 1kg", value: "₹30", barcode: "8900000000025", color: "bg-amber-600", width: "75%", sold: "0 sold", price: 30, stock: 100 },
+  { id: 120, name: "Fresh Tomatoes 1kg", value: "₹40", barcode: "8900000000032", color: "bg-rose-500", width: "65%", sold: "0 sold", price: 40, stock: 80 },
+  { id: 121, name: "Fresh Green Chillies 250g", value: "₹20", barcode: "8900000000049", color: "bg-emerald-500", width: "50%", sold: "0 sold", price: 20, stock: 50 },
+  { id: 122, name: "Fresh Ginger 250g", value: "₹30", barcode: "8900000000056", color: "bg-amber-700", width: "45%", sold: "0 sold", price: 30, stock: 45 },
 ];
 
 // Helper to get registered shopkeepers
@@ -209,19 +298,58 @@ export function initializeStoreProducts(email: string) {
   const key = `quantum_products_${email.toLowerCase()}`;
   if (!localStorage.getItem(key)) {
     localStorage.setItem(key, JSON.stringify(DEFAULT_DAILY_PRODUCTS));
+  } else {
+    // If store already has products, merge newly added default products (by barcode/name)
+    getStoreProducts(email);
   }
 }
 
-// Get products for current store
+// Get products for current store (with seamless auto-sync for newly added catalog barcodes)
 export function getStoreProducts(email?: string): ProductItem[] {
   const storeEmail = (email || "default").toLowerCase();
   const key = `quantum_products_${storeEmail}`;
   const stored = localStorage.getItem(key);
   if (stored) {
     try {
-      return JSON.parse(stored);
+      const parsed: ProductItem[] = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Auto-merge any new barcode catalog items from DEFAULT_DAILY_PRODUCTS that aren't present yet
+        const existingBarcodes = new Set(
+          parsed.map((p) => (p.barcode ? p.barcode.trim() : "")).filter(Boolean)
+        );
+        const existingNames = new Set(
+          parsed.map((p) => (p.name ? p.name.trim().toLowerCase() : "")).filter(Boolean)
+        );
+
+        let hasNew = false;
+        const merged = [...parsed];
+
+        for (const defProd of DEFAULT_DAILY_PRODUCTS) {
+          const b = (defProd.barcode || "").trim();
+          const n = (defProd.name || "").trim().toLowerCase();
+          const barcodeMissing = b && !existingBarcodes.has(b);
+          const nameMissing = n && !existingNames.has(n);
+
+          if (barcodeMissing && nameMissing) {
+            merged.push(defProd);
+            existingBarcodes.add(b);
+            existingNames.add(n);
+            hasNew = true;
+          }
+        }
+
+        if (hasNew) {
+          localStorage.setItem(key, JSON.stringify(merged));
+        }
+        return merged;
+      }
     } catch {}
   }
+
+  // First time initialization
+  try {
+    localStorage.setItem(key, JSON.stringify(DEFAULT_DAILY_PRODUCTS));
+  } catch {}
   return DEFAULT_DAILY_PRODUCTS;
 }
 
