@@ -1,0 +1,1222 @@
+[
+  {
+    "name": "Amul Taaza Milk 500ml",
+    "barcode": "8901262010053",
+    "price": 30,
+    "stock": 50,
+    "value": "₹30",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Amul Gold Milk 500ml",
+    "barcode": "8901262010060",
+    "price": 34,
+    "stock": 45,
+    "value": "₹34",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Amul Butter 100g",
+    "barcode": "8901262010015",
+    "price": 58,
+    "stock": 35,
+    "value": "₹58",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Amul Butter 500g",
+    "barcode": "8901262010022",
+    "price": 275,
+    "stock": 20,
+    "value": "₹275",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Amul Pure Ghee Tin 1L",
+    "barcode": "8901262030013",
+    "price": 610,
+    "stock": 15,
+    "value": "₹610",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Amul Cheese Slices 200g",
+    "barcode": "8901262020113",
+    "price": 140,
+    "stock": 25,
+    "value": "₹140",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Harvest White Bread 400g",
+    "barcode": "8901725111221",
+    "price": 45,
+    "stock": 30,
+    "value": "₹45",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "English Oven Brown Bread 400g",
+    "barcode": "8901725111238",
+    "price": 55,
+    "stock": 20,
+    "value": "₹55",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Farm Fresh Eggs 6-Pack",
+    "barcode": "8904000100234",
+    "price": 50,
+    "stock": 40,
+    "value": "₹50",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Mother Dairy Curd 400g",
+    "barcode": "8901648001024",
+    "price": 35,
+    "stock": 30,
+    "value": "₹35",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Kelloggs Corn Flakes 250g",
+    "barcode": "8901499008123",
+    "price": 110,
+    "stock": 20,
+    "value": "₹110",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Nestle Everyday Dairy Whitener 400g",
+    "barcode": "8901058891019",
+    "price": 240,
+    "stock": 18,
+    "value": "₹240",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Aashirvaad Shudh Chakki Atta 5kg",
+    "barcode": "8901725121015",
+    "price": 240,
+    "stock": 40,
+    "value": "₹240",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Aashirvaad Select Sharbati Atta 5kg",
+    "barcode": "8901725121022",
+    "price": 295,
+    "stock": 25,
+    "value": "₹295",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Fortune Chakki Fresh Atta 5kg",
+    "barcode": "8906007280045",
+    "price": 230,
+    "stock": 30,
+    "value": "₹230",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Fortune Basmati Rice 1kg",
+    "barcode": "8906007280014",
+    "price": 120,
+    "stock": 35,
+    "value": "₹120",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Daawat Rozana Super Basmati Rice 5kg",
+    "barcode": "8901537010014",
+    "price": 450,
+    "stock": 15,
+    "value": "₹450",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "India Gate Basmati Rice Feast 1kg",
+    "barcode": "8906001790014",
+    "price": 95,
+    "stock": 30,
+    "value": "₹95",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Tata Sampann Toor Dal 1kg",
+    "barcode": "8901058853116",
+    "price": 165,
+    "stock": 25,
+    "value": "₹165",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Tata Sampann Moong Dal 1kg",
+    "barcode": "8901058853123",
+    "price": 140,
+    "stock": 25,
+    "value": "₹140",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Tata Sampann Chana Dal 1kg",
+    "barcode": "8901058853130",
+    "price": 115,
+    "stock": 25,
+    "value": "₹115",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Tata Sampann Urad Dal 1kg",
+    "barcode": "8901058853147",
+    "price": 160,
+    "stock": 20,
+    "value": "₹160",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Fortune Sunlite Sunflower Oil 1L",
+    "barcode": "8906007280021",
+    "price": 145,
+    "stock": 40,
+    "value": "₹145",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Saffola Gold Pro Healthy Oil 1L",
+    "barcode": "8901088011012",
+    "price": 165,
+    "stock": 30,
+    "value": "₹165",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Dhara Mustard Oil 1L",
+    "barcode": "8901648011030",
+    "price": 155,
+    "stock": 35,
+    "value": "₹155",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Gemini Sunflower Oil 1L",
+    "barcode": "8906012450013",
+    "price": 140,
+    "stock": 25,
+    "value": "₹140",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Tata Salt 1kg",
+    "barcode": "8901058852331",
+    "price": 28,
+    "stock": 60,
+    "value": "₹28",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Pure Refined Sugar 1kg",
+    "barcode": "8901001001001",
+    "price": 46,
+    "stock": 50,
+    "value": "₹46",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Everest Turmeric Powder 100g",
+    "barcode": "8901786101018",
+    "price": 34,
+    "stock": 40,
+    "value": "₹34",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Everest Tikhalal Chilli Powder 100g",
+    "barcode": "8901786102015",
+    "price": 48,
+    "stock": 40,
+    "value": "₹48",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Everest Coriander Powder 100g",
+    "barcode": "8901786103012",
+    "price": 38,
+    "stock": 35,
+    "value": "₹38",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Everest Garam Masala 100g",
+    "barcode": "8901786104019",
+    "price": 85,
+    "stock": 30,
+    "value": "₹85",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "MDH Chana Masala 100g",
+    "barcode": "8901594101016",
+    "price": 82,
+    "stock": 30,
+    "value": "₹82",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "MDH Kitchen King Masala 100g",
+    "barcode": "8901594102013",
+    "price": 85,
+    "stock": 30,
+    "value": "₹85",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "MDH Deggi Mirch 100g",
+    "barcode": "8901594103010",
+    "price": 92,
+    "stock": 25,
+    "value": "₹92",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Catch Table Salt Sprinkler 200g",
+    "barcode": "8901192101014",
+    "price": 35,
+    "stock": 30,
+    "value": "₹35",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Catch Black Pepper Sprinkler 100g",
+    "barcode": "8901192102011",
+    "price": 95,
+    "stock": 25,
+    "value": "₹95",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Maggi Masala-ae-Magic Pack of 10",
+    "barcode": "8901058842059",
+    "price": 50,
+    "stock": 40,
+    "value": "₹50",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Kissan Fresh Tomato Ketchup 500g",
+    "barcode": "8901030461019",
+    "price": 120,
+    "stock": 25,
+    "value": "₹120",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Maggi Rich Tomato Ketchup 500g",
+    "barcode": "8901058871011",
+    "price": 115,
+    "stock": 25,
+    "value": "₹115",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Chings Secret Schezwan Chutney 250g",
+    "barcode": "8901595102012",
+    "price": 85,
+    "stock": 30,
+    "value": "₹85",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Parle-G Gold Biscuits 250g",
+    "barcode": "8901719101016",
+    "price": 25,
+    "stock": 80,
+    "value": "₹25",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Parle Monaco Salted Crackers 200g",
+    "barcode": "8901719102020",
+    "price": 35,
+    "stock": 45,
+    "value": "₹35",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Parle Krackjack Biscuits 200g",
+    "barcode": "8901719103010",
+    "price": 35,
+    "stock": 40,
+    "value": "₹35",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Parle Hide & Seek Choco Chip 100g",
+    "barcode": "8901719104055",
+    "price": 40,
+    "stock": 35,
+    "value": "₹40",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Britannia Good Day Butter 100g",
+    "barcode": "8901063012010",
+    "price": 30,
+    "stock": 60,
+    "value": "₹30",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Britannia Good Day Cashew 100g",
+    "barcode": "8901063012027",
+    "price": 35,
+    "stock": 50,
+    "value": "₹35",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Britannia Marie Gold 250g",
+    "barcode": "8901063013024",
+    "price": 35,
+    "stock": 55,
+    "value": "₹35",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Britannia Bourbon Chocolate 120g",
+    "barcode": "8901063014038",
+    "price": 30,
+    "stock": 45,
+    "value": "₹30",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Britannia Little Hearts 75g",
+    "barcode": "8901063015028",
+    "price": 25,
+    "stock": 40,
+    "value": "₹25",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Sunfeast Dark Fantasy Choco Fills 75g",
+    "barcode": "8901725141020",
+    "price": 40,
+    "stock": 35,
+    "value": "₹40",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Oreo Original Vanilla Cream 120g",
+    "barcode": "8901233024041",
+    "price": 40,
+    "stock": 45,
+    "value": "₹40",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Maggi 2-Minute Noodles 4-Pack",
+    "barcode": "8901058842011",
+    "price": 56,
+    "stock": 60,
+    "value": "₹56",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Sunfeast YiPPee Magic Masala Noodles 240g",
+    "barcode": "8901725151012",
+    "price": 52,
+    "stock": 40,
+    "value": "₹52",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Lays Magic Masala Chips 50g",
+    "barcode": "8901491101021",
+    "price": 20,
+    "stock": 65,
+    "value": "₹20",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Lays Classic Salted Chips 50g",
+    "barcode": "8901491101014",
+    "price": 20,
+    "stock": 50,
+    "value": "₹20",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Lays Spanish Tomato Tango 50g",
+    "barcode": "8901491101038",
+    "price": 20,
+    "stock": 50,
+    "value": "₹20",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Kurkure Masala Munch 82g",
+    "barcode": "8901491001086",
+    "price": 20,
+    "stock": 60,
+    "value": "₹20",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Haldirams Nagpur Aloo Bhujia 150g",
+    "barcode": "8904004400477",
+    "price": 45,
+    "stock": 50,
+    "value": "₹45",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Haldirams Bhujia Sev 200g",
+    "barcode": "8904004401030",
+    "price": 55,
+    "stock": 40,
+    "value": "₹55",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Haldirams Khatta Meetha 200g",
+    "barcode": "8904004401047",
+    "price": 55,
+    "stock": 35,
+    "value": "₹55",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Tata Tea Premium 500g",
+    "barcode": "8901058851013",
+    "price": 250,
+    "stock": 30,
+    "value": "₹250",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Red Label Tea 250g",
+    "barcode": "8901030383014",
+    "price": 135,
+    "stock": 35,
+    "value": "₹135",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Taj Mahal Tea 250g",
+    "barcode": "8901030384028",
+    "price": 190,
+    "stock": 20,
+    "value": "₹190",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Wagh Bakri CTC Tea 500g",
+    "barcode": "8906001020012",
+    "price": 270,
+    "stock": 25,
+    "value": "₹270",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Nescafe Classic Coffee 50g",
+    "barcode": "8901058862019",
+    "price": 185,
+    "stock": 30,
+    "value": "₹185",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "BRU Instant Coffee 50g",
+    "barcode": "8901030372018",
+    "price": 120,
+    "stock": 25,
+    "value": "₹120",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Cadbury Bournvita 500g",
+    "barcode": "8901233031025",
+    "price": 245,
+    "stock": 20,
+    "value": "₹245",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Horlicks Classic Malt 500g",
+    "barcode": "8901571001018",
+    "price": 260,
+    "stock": 20,
+    "value": "₹260",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Coca-Cola Bottle 750ml",
+    "barcode": "8901764012237",
+    "price": 40,
+    "stock": 45,
+    "value": "₹40",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Thums Up Bottle 750ml",
+    "barcode": "8901764022236",
+    "price": 40,
+    "stock": 50,
+    "value": "₹40",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Sprite Bottle 750ml",
+    "barcode": "8901764032235",
+    "price": 40,
+    "stock": 40,
+    "value": "₹40",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Maaza Mango Drink 600ml",
+    "barcode": "8901764041214",
+    "price": 42,
+    "stock": 45,
+    "value": "₹42",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Frooti Mango Drink 160ml",
+    "barcode": "8902579103028",
+    "price": 15,
+    "stock": 60,
+    "value": "₹15",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Bisleri Mineral Water 1L",
+    "barcode": "8906014400122",
+    "price": 20,
+    "stock": 80,
+    "value": "₹20",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Kinley Mineral Water 1L",
+    "barcode": "8901764051015",
+    "price": 20,
+    "stock": 60,
+    "value": "₹20",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Cadbury Dairy Milk Chocolate 50g",
+    "barcode": "8901233010020",
+    "price": 45,
+    "stock": 60,
+    "value": "₹45",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Cadbury 5 Star Bar 40g",
+    "barcode": "8901233012017",
+    "price": 20,
+    "stock": 50,
+    "value": "₹20",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Nestle KitKat 4-Finger 38g",
+    "barcode": "8901058863023",
+    "price": 30,
+    "stock": 50,
+    "value": "₹30",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Nestle Munch Crunchy Bar 25g",
+    "barcode": "8901058864013",
+    "price": 10,
+    "stock": 70,
+    "value": "₹10",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Cadbury Dairy Milk Silk 60g",
+    "barcode": "8901233013014",
+    "price": 80,
+    "stock": 30,
+    "value": "₹80",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Cadbury Gems Surprise Ball 23g",
+    "barcode": "8901233014011",
+    "price": 25,
+    "stock": 40,
+    "value": "₹25",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Dettol Original Soap 75g",
+    "barcode": "8901396112012",
+    "price": 38,
+    "stock": 50,
+    "value": "₹38",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Lifebuoy Total Soap 125g",
+    "barcode": "8901030391026",
+    "price": 36,
+    "stock": 45,
+    "value": "₹36",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Dove Cream Beauty Bar 100g",
+    "barcode": "8901030392023",
+    "price": 68,
+    "stock": 35,
+    "value": "₹68",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Lux Velvet Glow Rose Soap 100g",
+    "barcode": "8901030393013",
+    "price": 42,
+    "stock": 40,
+    "value": "₹42",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Pears Pure & Gentle Soap 125g",
+    "barcode": "8901030394010",
+    "price": 75,
+    "stock": 30,
+    "value": "₹75",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Cinthol Original Deodorant Soap 100g",
+    "barcode": "8901023011016",
+    "price": 45,
+    "stock": 35,
+    "value": "₹45",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Colgate Strong Teeth 100g",
+    "barcode": "8901314010014",
+    "price": 62,
+    "stock": 50,
+    "value": "₹62",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Close Up Red Hot Gel 80g",
+    "barcode": "8901030401015",
+    "price": 55,
+    "stock": 40,
+    "value": "₹55",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Dabur Red Ayurvedic Toothpaste 150g",
+    "barcode": "8901207011015",
+    "price": 75,
+    "stock": 35,
+    "value": "₹75",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Sensodyne Fresh Mint Toothpaste 75g",
+    "barcode": "8901571011017",
+    "price": 145,
+    "stock": 25,
+    "value": "₹145",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Clinic Plus Shampoo 175ml",
+    "barcode": "8901030412011",
+    "price": 110,
+    "stock": 35,
+    "value": "₹110",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Head & Shoulders Shampoo 180ml",
+    "barcode": "8901314510026",
+    "price": 175,
+    "stock": 25,
+    "value": "₹175",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Parachute 100% Coconut Hair Oil 200ml",
+    "barcode": "8901088021011",
+    "price": 85,
+    "stock": 45,
+    "value": "₹85",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Dabur Amla Hair Oil 180ml",
+    "barcode": "8901207021014",
+    "price": 95,
+    "stock": 35,
+    "value": "₹95",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Lifebuoy Handwash Refill 185ml",
+    "barcode": "8901030431012",
+    "price": 45,
+    "stock": 40,
+    "value": "₹45",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Dettol Liquid Handwash Pump 200ml",
+    "barcode": "8901396121014",
+    "price": 99,
+    "stock": 30,
+    "value": "₹99",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Dettol Antiseptic Liquid 125ml",
+    "barcode": "8901396131013",
+    "price": 88,
+    "stock": 30,
+    "value": "₹88",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Savlon Antiseptic Liquid 100ml",
+    "barcode": "8901725161011",
+    "price": 42,
+    "stock": 30,
+    "value": "₹42",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Vaseline Petroleum Jelly 42g",
+    "barcode": "8901030491016",
+    "price": 45,
+    "stock": 35,
+    "value": "₹45",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Nivea Creme Moisturizer 100ml",
+    "barcode": "8904256001017",
+    "price": 140,
+    "stock": 25,
+    "value": "₹140",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Surf Excel Easy Wash Detergent 1kg",
+    "barcode": "8901030022012",
+    "price": 135,
+    "stock": 40,
+    "value": "₹135",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Ariel Matic Front Load Detergent 1kg",
+    "barcode": "8901314810010",
+    "price": 240,
+    "stock": 25,
+    "value": "₹240",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Tide Plus Extra Power Detergent 1kg",
+    "barcode": "8901314820019",
+    "price": 125,
+    "stock": 35,
+    "value": "₹125",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Rin Detergent Bar 250g",
+    "barcode": "8901030031014",
+    "price": 20,
+    "stock": 60,
+    "value": "₹20",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Wheel 2in1 Detergent Powder 1kg",
+    "barcode": "8901030041013",
+    "price": 72,
+    "stock": 40,
+    "value": "₹72",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Comfort Fabric Conditioner 220ml",
+    "barcode": "8901030051012",
+    "price": 65,
+    "stock": 30,
+    "value": "₹65",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Vim Dishwash Gel 250ml",
+    "barcode": "8901030421013",
+    "price": 55,
+    "stock": 45,
+    "value": "₹55",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Vim Lemon Dishwash Bar 135g",
+    "barcode": "8901030422010",
+    "price": 10,
+    "stock": 75,
+    "value": "₹10",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Pril Dishwashing Liquid Lime 225ml",
+    "barcode": "8901399011015",
+    "price": 55,
+    "stock": 35,
+    "value": "₹55",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Harpic Power Plus 500ml",
+    "barcode": "8901396211029",
+    "price": 95,
+    "stock": 40,
+    "value": "₹95",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Colin Glass Cleaner 500ml",
+    "barcode": "8901396221011",
+    "price": 105,
+    "stock": 30,
+    "value": "₹105",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Lizol Floor Cleaner 500ml",
+    "barcode": "8901396231010",
+    "price": 110,
+    "stock": 35,
+    "value": "₹110",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Good Knight Gold Flash Refill 45ml",
+    "barcode": "8901023021015",
+    "price": 82,
+    "stock": 40,
+    "value": "₹82",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "All Out Ultra Mosquito Refill 45ml",
+    "barcode": "8901198011010",
+    "price": 80,
+    "stock": 35,
+    "value": "₹80",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Odonil Room Air Freshener 50g",
+    "barcode": "8901207031013",
+    "price": 55,
+    "stock": 35,
+    "value": "₹55",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Fresh Onions 1kg",
+    "barcode": "8900000000018",
+    "price": 35,
+    "stock": 90,
+    "value": "₹35",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Fresh Potatoes 1kg",
+    "barcode": "8900000000025",
+    "price": 30,
+    "stock": 100,
+    "value": "₹30",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Fresh Tomatoes 1kg",
+    "barcode": "8900000000032",
+    "price": 40,
+    "stock": 80,
+    "value": "₹40",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Fresh Green Chillies 250g",
+    "barcode": "8900000000049",
+    "price": 20,
+    "stock": 50,
+    "value": "₹20",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  },
+  {
+    "name": "Fresh Ginger 250g",
+    "barcode": "8900000000056",
+    "price": 30,
+    "stock": 45,
+    "value": "₹30",
+    "sold": "0 sold",
+    "width": "35%",
+    "color": "bg-indigo-500"
+  }
+]

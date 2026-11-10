@@ -360,6 +360,135 @@ export function saveStoreProducts(products: ProductItem[], email?: string) {
   localStorage.setItem(key, JSON.stringify(products));
 }
 
+// Import products from raw CSV or JSON text
+export function importProductsFromText(
+  text: string,
+  email?: string
+): { success: boolean; count: number; error?: string } {
+  try {
+    const trimmed = text.trim();
+    let importedItems: ProductItem[] = [];
+
+    if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+      // JSON format
+      const parsed = JSON.parse(trimmed);
+      const list = Array.isArray(parsed)
+        ? parsed
+        : parsed.products || parsed.items || parsed.data || [parsed];
+      importedItems = list.map((item: any, idx: number) => {
+        const price = parseAmount(item.price || item.mrp || item.rate || item.value || 0);
+        return {
+          id: Date.now() + idx,
+          name: String(item.name || item.product_name || item.product || `Item ${idx + 1}`).trim(),
+          barcode: String(item.barcode || item.code || item.ean || item.upc || `GEN${idx + 1000}`).trim(),
+          value: `₹${price}`,
+          price,
+          stock: parseAmount(item.stock || item.qty || 50),
+          sold: item.sold || "0 sold",
+          color: item.color || "bg-indigo-500",
+          width: item.width || "35%",
+        };
+      });
+    } else {
+      // CSV format
+      const lines = trimmed.split(/\r?\n/).filter((line) => line.trim().length > 0);
+      if (lines.length < 2) {
+        return { success: false, count: 0, error: "CSV file is empty or missing data rows." };
+      }
+
+      const parseCsvLine = (line: string): string[] => {
+        const result: string[] = [];
+        let cur = "";
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          if (char === '"' || char === "'") {
+            inQuotes = !inQuotes;
+          } else if (char === "," && !inQuotes) {
+            result.push(cur.trim().replace(/^["']|["']$/g, ""));
+            cur = "";
+          } else {
+            cur += char;
+          }
+        }
+        result.push(cur.trim().replace(/^["']|["']$/g, ""));
+        return result;
+      };
+
+      const headers = parseCsvLine(lines[0]).map((h) =>
+        h.toLowerCase().replace(/[\s\-_]/g, "")
+      );
+
+      const barcodeIdx = headers.findIndex((h) =>
+        ["barcode", "code", "ean", "ean13", "upc", "itemcode", "id"].includes(h)
+      );
+      const nameIdx = headers.findIndex((h) =>
+        ["name", "productname", "product", "itemname", "item", "title", "description"].includes(h)
+      );
+      const priceIdx = headers.findIndex((h) =>
+        ["price", "mrp", "rate", "value", "cost", "unitprice", "amount"].includes(h)
+      );
+      const stockIdx = headers.findIndex((h) =>
+        ["stock", "qty", "quantity", "inventory", "count"].includes(h)
+      );
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = parseCsvLine(lines[i]);
+        if (cols.length === 0 || cols.every((c) => !c)) continue;
+
+        const name = nameIdx !== -1 ? cols[nameIdx] : cols[1] || cols[0];
+        const barcode = barcodeIdx !== -1 ? cols[barcodeIdx] : cols[0];
+        const price =
+          priceIdx !== -1 ? parseAmount(cols[priceIdx]) : parseAmount(cols[2]) || 0;
+        const stock = stockIdx !== -1 ? parseAmount(cols[stockIdx]) : 50;
+
+        if (!name && !barcode) continue;
+
+        importedItems.push({
+          id: Date.now() + i,
+          name: name ? name.trim() : `Item ${barcode}`,
+          barcode: barcode ? barcode.trim() : `GEN${i + 1000}`,
+          value: `₹${price}`,
+          price,
+          stock: stock || 50,
+          sold: "0 sold",
+          color: "bg-indigo-500",
+          width: "35%",
+        });
+      }
+    }
+
+    if (importedItems.length === 0) {
+      return { success: false, count: 0, error: "No valid items could be read from dataset." };
+    }
+
+    // Merge into store products
+    const current = getStoreProducts(email);
+    const existingBarcodes = new Map(current.map((p) => [(p.barcode || "").trim(), p]));
+
+    const mergedList = [...current];
+
+    for (const item of importedItems) {
+      const bc = item.barcode.trim();
+      if (bc && existingBarcodes.has(bc)) {
+        const existingItem = existingBarcodes.get(bc)!;
+        existingItem.name = item.name;
+        existingItem.value = item.value;
+        existingItem.price = item.price;
+        if (item.stock) existingItem.stock = item.stock;
+      } else {
+        mergedList.unshift(item);
+        if (bc) existingBarcodes.set(bc, item);
+      }
+    }
+
+    saveStoreProducts(mergedList, email);
+    return { success: true, count: importedItems.length };
+  } catch (err: any) {
+    return { success: false, count: 0, error: err.message || "Failed to parse dataset." };
+  }
+}
+
 // Helper to safely parse rupee/currency amount
 export function parseAmount(val: any): number {
   if (typeof val === "number") return isNaN(val) ? 0 : val;

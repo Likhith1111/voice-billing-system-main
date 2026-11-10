@@ -1,0 +1,123 @@
+barcode,name,price,stock,category
+8901262010053,Amul Taaza Milk 500ml,30,50,Dairy
+8901262010060,Amul Gold Milk 500ml,34,45,Dairy
+8901262010015,Amul Butter 100g,58,35,Dairy
+8901262010022,Amul Butter 500g,275,20,Dairy
+8901262030013,Amul Pure Ghee Tin 1L,610,15,Dairy
+8901262020113,Amul Cheese Slices 200g,140,25,Dairy
+8901725111221,Harvest White Bread 400g,45,30,Bakery
+8901725111238,English Oven Brown Bread 400g,55,20,Bakery
+8904000100234,Farm Fresh Eggs 6-Pack,50,40,Dairy
+8901648001024,Mother Dairy Curd 400g,35,30,Dairy
+8901499008123,Kelloggs Corn Flakes 250g,110,20,Breakfast
+8901058891019,Nestle Everyday Dairy Whitener 400g,240,18,Dairy
+8901725121015,Aashirvaad Shudh Chakki Atta 5kg,240,40,Staples
+8901725121022,Aashirvaad Select Sharbati Atta 5kg,295,25,Staples
+8906007280045,Fortune Chakki Fresh Atta 5kg,230,30,Staples
+8906007280014,Fortune Basmati Rice 1kg,120,35,Staples
+8901537010014,Daawat Rozana Super Basmati Rice 5kg,450,15,Staples
+8906001790014,India Gate Basmati Rice Feast 1kg,95,30,Staples
+8901058853116,Tata Sampann Toor Dal 1kg,165,25,Staples
+8901058853123,Tata Sampann Moong Dal 1kg,140,25,Staples
+8901058853130,Tata Sampann Chana Dal 1kg,115,25,Staples
+8901058853147,Tata Sampann Urad Dal 1kg,160,20,Staples
+8906007280021,Fortune Sunlite Sunflower Oil 1L,145,40,Staples
+8901088011012,Saffola Gold Pro Healthy Oil 1L,165,30,Staples
+8901648011030,Dhara Mustard Oil 1L,155,35,Staples
+8906012450013,Gemini Sunflower Oil 1L,140,25,Staples
+8901058852331,Tata Salt 1kg,28,60,Staples
+8901001001001,Pure Refined Sugar 1kg,46,50,Staples
+8901786101018,Everest Turmeric Powder 100g,34,40,Masalas
+8901786102015,Everest Tikhalal Chilli Powder 100g,48,40,Masalas
+8901786103012,Everest Coriander Powder 100g,38,35,Masalas
+8901786104019,Everest Garam Masala 100g,85,30,Masalas
+8901594101016,MDH Chana Masala 100g,82,30,Masalas
+8901594102013,MDH Kitchen King Masala 100g,85,30,Masalas
+8901594103010,MDH Deggi Mirch 100g,92,25,Masalas
+8901192101014,Catch Table Salt Sprinkler 200g,35,30,Masalas
+8901192102011,Catch Black Pepper Sprinkler 100g,95,25,Masalas
+8901058842059,Maggi Masala-ae-Magic Pack of 10,50,40,Masalas
+8901030461019,Kissan Fresh Tomato Ketchup 500g,120,25,Sauces
+8901058871011,Maggi Rich Tomato Ketchup 500g,115,25,Sauces
+8901595102012,Chings Secret Schezwan Chutney 250g,85,30,Sauces
+8901719101016,Parle-G Gold Biscuits 250g,25,80,Biscuits
+8901719102020,Parle Monaco Salted Crackers 200g,35,45,Biscuits
+8901719103010,Parle Krackjack Biscuits 200g,35,40,Biscuits
+8901719104055,Parle Hide & Seek Choco Chip 100g,40,35,Biscuits
+8901063012010,Britannia Good Day Butter 100g,30,60,Biscuits
+8901063012027,Britannia Good Day Cashew 100g,35,50,Biscuits
+8901063013024,Britannia Marie Gold 250g,35,55,Biscuits
+8901063014038,Britannia Bourbon Chocolate 120g,30,45,Biscuits
+8901063015028,Britannia Little Hearts 75g,25,40,Biscuits
+8901725141020,Sunfeast Dark Fantasy Choco Fills 75g,40,35,Biscuits
+8901233024041,Oreo Original Vanilla Cream 120g,40,45,Biscuits
+8901058842011,Maggi 2-Minute Noodles 4-Pack,56,60,Snacks
+8901725151012,Sunfeast YiPPee Magic Masala Noodles 240g,52,40,Snacks
+8901491101021,Lays Magic Masala Chips 50g,20,65,Snacks
+8901491101014,Lays Classic Salted Chips 50g,20,50,Snacks
+8901491101038,Lays Spanish Tomato Tango 50g,20,50,Snacks
+8901491001086,Kurkure Masala Munch 82g,20,60,Snacks
+8904004400477,Haldirams Nagpur Aloo Bhujia 150g,45,50,Snacks
+8904004401030,Haldirams Bhujia Sev 200g,55,40,Snacks
+8904004401047,Haldirams Khatta Meetha 200g,55,35,Snacks
+8901058851013,Tata Tea Premium 500g,250,30,Beverages
+8901030383014,Red Label Tea 250g,135,35,Beverages
+8901030384028,Taj Mahal Tea 250g,190,20,Beverages
+8906001020012,Wagh Bakri CTC Tea 500g,270,25,Beverages
+8901058862019,Nescafe Classic Coffee 50g,185,30,Beverages
+8901030372018,BRU Instant Coffee 50g,120,25,Beverages
+8901233031025,Cadbury Bournvita 500g,245,20,Beverages
+8901571001018,Horlicks Classic Malt 500g,260,20,Beverages
+8901764012237,Coca-Cola Bottle 750ml,40,45,Beverages
+8901764022236,Thums Up Bottle 750ml,40,50,Beverages
+8901764032235,Sprite Bottle 750ml,40,40,Beverages
+8901764041214,Maaza Mango Drink 600ml,42,45,Beverages
+8902579103028,Frooti Mango Drink 160ml,15,60,Beverages
+8906014400122,Bisleri Mineral Water 1L,20,80,Beverages
+8901764051015,Kinley Mineral Water 1L,20,60,Beverages
+8901233010020,Cadbury Dairy Milk Chocolate 50g,45,60,Chocolates
+8901233012017,Cadbury 5 Star Bar 40g,20,50,Chocolates
+8901058863023,Nestle KitKat 4-Finger 38g,30,50,Chocolates
+8901058864013,Nestle Munch Crunchy Bar 25g,10,70,Chocolates
+8901233013014,Cadbury Dairy Milk Silk 60g,80,30,Chocolates
+8901233014011,Cadbury Gems Surprise Ball 23g,25,40,Chocolates
+8901396112012,Dettol Original Soap 75g,38,50,Personal Care
+8901030391026,Lifebuoy Total Soap 125g,36,45,Personal Care
+8901030392023,Dove Cream Beauty Bar 100g,68,35,Personal Care
+8901030393013,Lux Velvet Glow Rose Soap 100g,42,40,Personal Care
+8901030394010,Pears Pure & Gentle Soap 125g,75,30,Personal Care
+8901023011016,Cinthol Original Deodorant Soap 100g,45,35,Personal Care
+8901314010014,Colgate Strong Teeth 100g,62,50,Personal Care
+8901030401015,Close Up Red Hot Gel 80g,55,40,Personal Care
+8901207011015,Dabur Red Ayurvedic Toothpaste 150g,75,35,Personal Care
+8901571011017,Sensodyne Fresh Mint Toothpaste 75g,145,25,Personal Care
+8901030412011,Clinic Plus Shampoo 175ml,110,35,Personal Care
+8901314510026,Head & Shoulders Shampoo 180ml,175,25,Personal Care
+8901088021011,Parachute 100% Coconut Hair Oil 200ml,85,45,Personal Care
+8901207021014,Dabur Amla Hair Oil 180ml,95,35,Personal Care
+8901030431012,Lifebuoy Handwash Refill 185ml,45,40,Personal Care
+8901396121014,Dettol Liquid Handwash Pump 200ml,99,30,Personal Care
+8901396131013,Dettol Antiseptic Liquid 125ml,88,30,Personal Care
+8901725161011,Savlon Antiseptic Liquid 100ml,42,30,Personal Care
+8901030491016,Vaseline Petroleum Jelly 42g,45,35,Personal Care
+8904256001017,Nivea Creme Moisturizer 100ml,140,25,Personal Care
+8901030022012,Surf Excel Easy Wash Detergent 1kg,135,40,Household
+8901314810010,Ariel Matic Front Load Detergent 1kg,240,25,Household
+8901314820019,Tide Plus Extra Power Detergent 1kg,125,35,Household
+8901030031014,Rin Detergent Bar 250g,20,60,Household
+8901030041013,Wheel 2in1 Detergent Powder 1kg,72,40,Household
+8901030051012,Comfort Fabric Conditioner 220ml,65,30,Household
+8901030421013,Vim Dishwash Gel 250ml,55,45,Household
+8901030422010,Vim Lemon Dishwash Bar 135g,10,75,Household
+8901399011015,Pril Dishwashing Liquid Lime 225ml,55,35,Household
+8901396211029,Harpic Power Plus 500ml,95,40,Household
+8901396221011,Colin Glass Cleaner 500ml,105,30,Household
+8901396231010,Lizol Floor Cleaner 500ml,110,35,Household
+8901023021015,Good Knight Gold Flash Refill 45ml,82,40,Household
+8901198011010,All Out Ultra Mosquito Refill 45ml,80,35,Household
+8901207031013,Odonil Room Air Freshener 50g,55,35,Household
+8900000000018,Fresh Onions 1kg,35,90,Produce
+8900000000025,Fresh Potatoes 1kg,30,100,Produce
+8900000000032,Fresh Tomatoes 1kg,40,80,Produce
+8900000000049,Fresh Green Chillies 250g,20,50,Produce
+8900000000056,Fresh Ginger 250g,30,45,Produce

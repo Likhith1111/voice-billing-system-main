@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Package, Plus, Edit2, Trash2, X, Camera, ScanLine } from 'lucide-react';
+import { Package, Plus, Edit2, Trash2, X, Camera, ScanLine, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../App';
 import { apiUrl } from '../config/api';
 
-import { getStoreProducts, saveStoreProducts } from '../lib/offlineStore';
+import { getStoreProducts, saveStoreProducts, importProductsFromText } from '../lib/offlineStore';
 
 export default function ProductsView() {
   const { shopkeeper } = useAuth();
@@ -23,6 +23,29 @@ export default function ProductsView() {
     barcode: ''
   });
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const datasetInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleDatasetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      const content = evt.target?.result as string;
+      if (!content) return;
+
+      const res = importProductsFromText(content, shopkeeper?.email);
+      if (res.success) {
+        toast.success(`Successfully imported ${res.count} grocery items from dataset!`);
+        const updated = getStoreProducts(shopkeeper?.email);
+        setProducts(updated);
+      } else {
+        toast.error(res.error || "Failed to import dataset.");
+      }
+      if (datasetInputRef.current) datasetInputRef.current.value = "";
+    };
+    reader.readAsText(file);
+  };
 
   const fetchProducts = () => {
     setLoading(true);
@@ -157,14 +180,32 @@ export default function ProductsView() {
 
   return (
     <div className="mx-auto max-w-[1500px] px-4 pb-12 pt-7 sm:px-6 lg:px-10 lg:pt-9">
-      <div className="mb-7 flex items-center justify-between">
+      <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-[28px] font-bold tracking-[-0.04em] text-slate-950 sm:text-[34px]">Products</h1>
           <p className="mt-2 text-sm text-slate-500">Manage your store's inventory and items.</p>
         </div>
-        <button onClick={() => handleOpenModal()} className="flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-600/20 transition hover:bg-violet-700">
-          <Plus className="h-4 w-4" /> Add Product
-        </button>
+        <div className="flex items-center gap-3">
+          <input
+            type="file"
+            ref={datasetInputRef}
+            accept=".csv,.json"
+            onChange={handleDatasetUpload}
+            className="hidden"
+          />
+          <button
+            onClick={() => datasetInputRef.current?.click()}
+            className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:border-slate-300"
+          >
+            <Upload className="h-4 w-4 text-violet-600" /> Import Dataset
+          </button>
+          <button
+            onClick={() => handleOpenModal()}
+            className="flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-600/20 transition hover:bg-violet-700"
+          >
+            <Plus className="h-4 w-4" /> Add Product
+          </button>
+        </div>
       </div>
 
       {/* Mobile Product Cards Feed (Visible on mobile) */}
