@@ -34,3 +34,4 @@ barcode,name,price,stock,category
    ```
 2. **From the Web App**:
    Navigate to the **Products** page and click the **"Import Dataset / CSV"** button to upload any CSV directly from your computer or phone!
+

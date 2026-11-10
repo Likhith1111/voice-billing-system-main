@@ -9,3 +9,4 @@ class Command(BaseCommand):
         import import_dataset
         import_dataset.run()
         self.stdout.write(self.style.SUCCESS('Dataset import finished!'))
+

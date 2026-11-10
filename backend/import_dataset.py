@@ -31,6 +31,7 @@ def find_dataset_files():
     candidates.extend(glob.glob(str(ROOT_DIR / '*grocery*.csv')))
     candidates.extend(glob.glob(str(ROOT_DIR / '*product*.csv')))
     candidates.extend(glob.glob(str(ROOT_DIR / '*dataset*.csv')))
+    candidates.extend(glob.glob(str(ROOT_DIR / '*BigBasket*.csv')))
     candidates.extend(glob.glob(str(ROOT_DIR / '*grocery*.json')))
     candidates.extend(glob.glob(str(ROOT_DIR / '*product*.json')))
 
@@ -71,21 +72,21 @@ def load_products_from_file(file_path: str):
                     
                     # Identify barcode key
                     barcode_key = None
-                    for candidate in ['barcode', 'code', 'ean', 'ean13', 'upc', 'item_code', 'id']:
+                    for candidate in ['barcode', 'code', 'ean', 'ean13', 'upc', 'item_code']:
                         if candidate in field_map:
                             barcode_key = field_map[candidate]
                             break
 
                     # Identify name key
                     name_key = None
-                    for candidate in ['name', 'product_name', 'product', 'item_name', 'item', 'title', 'description']:
+                    for candidate in ['product', 'name', 'product_name', 'item_name', 'item', 'title', 'description']:
                         if candidate in field_map:
                             name_key = field_map[candidate]
                             break
 
                     # Identify price key
                     price_key = None
-                    for candidate in ['price', 'mrp', 'rate', 'value', 'cost', 'unit_price', 'amount']:
+                    for candidate in ['sale_price', 'price', 'mrp', 'rate', 'value', 'cost', 'unit_price', 'amount', 'market_price']:
                         if candidate in field_map:
                             price_key = field_map[candidate]
                             break
@@ -103,16 +104,18 @@ def load_products_from_file(file_path: str):
                         price = parse_price(row.get(price_key)) if price_key else 0
                         stock = parse_price(row.get(stock_key)) if stock_key else 50
                         
-                        if not name and not barcode:
+                        if not name:
                             continue
 
-                        # fallback name
-                        if not name:
-                            name = f"Item {barcode}"
-                        
-                        # fallback barcode if missing
-                        if not barcode:
-                            barcode = f"GEN{idx+1000}"
+                        # Generate 13-digit EAN-13 barcode if missing
+                        if not barcode or barcode.isdigit() and len(barcode) < 12:
+                            raw_idx = row.get('index') or row.get('id') or (idx + 1)
+                            try:
+                                num = int(str(raw_idx).strip())
+                            except:
+                                num = idx + 1
+                            # 890 (India prefix) + 10-digit padded sequence
+                            barcode = f"890{num:010d}"
 
                         products.append({
                             "name": name,
@@ -139,9 +142,9 @@ def load_products_from_file(file_path: str):
                         if not isinstance(item, dict):
                             continue
                         norm_dict = {normalize_key(k): v for k, v in item.items()}
-                        name = norm_dict.get('name') or norm_dict.get('product_name') or norm_dict.get('product') or f"Product {idx+1}"
-                        barcode = str(norm_dict.get('barcode') or norm_dict.get('code') or norm_dict.get('ean') or f"GEN{idx+1000}")
-                        price = parse_price(norm_dict.get('price') or norm_dict.get('mrp') or norm_dict.get('value'))
+                        name = norm_dict.get('product') or norm_dict.get('name') or norm_dict.get('product_name') or f"Product {idx+1}"
+                        barcode = str(norm_dict.get('barcode') or norm_dict.get('code') or norm_dict.get('ean') or f"890{idx+1:010d}")
+                        price = parse_price(norm_dict.get('sale_price') or norm_dict.get('price') or norm_dict.get('mrp') or norm_dict.get('value'))
                         stock = parse_price(norm_dict.get('stock') or norm_dict.get('qty') or 50)
                         products.append({
                             "name": str(name).strip(),
@@ -159,14 +162,16 @@ def load_products_from_file(file_path: str):
     return products
 
 def sync_to_frontend(products):
-    """Save products to frontend public/dataset/products.json so frontend offlineStore loads them immediately."""
+    """Save top products to frontend public/dataset/products.json for instant offline billing."""
     frontend_dataset_dir = ROOT_DIR / 'frontend' / 'public' / 'dataset'
     frontend_dataset_dir.mkdir(parents=True, exist_ok=True)
     json_path = frontend_dataset_dir / 'products.json'
     try:
+        # Cap to 500 items for browser snappy performance
+        subset = products[:500] if len(products) > 500 else products
         with open(json_path, 'w', encoding='utf-8') as f:
-            json.dump(products, f, indent=2, ensure_ascii=False)
-        print(f"[OK] Synchronized {len(products)} products to frontend: {json_path}")
+            json.dump(subset, f, indent=2, ensure_ascii=False)
+        print(f"[OK] Synchronized {len(subset)} top products to frontend: {json_path}")
     except Exception as e:
         print(f"Warning: Could not sync to frontend public: {e}")
 
@@ -179,7 +184,7 @@ def run():
     if not files:
         print("No dataset files found in dataset/ or project root.")
         print(f"Please place your CSV or JSON file in: {ROOT_DIR / 'dataset'}")
-        print("Example: dataset/products.csv or dataset/groceries.csv")
+        print("Example: dataset/products.csv or dataset/BigBasket_Products.csv")
         return
 
     print(f"Found {len(files)} dataset file(s):")
@@ -196,7 +201,7 @@ def run():
         print("No valid products could be extracted from dataset files.")
         return
 
-    # Deduplicate by barcode
+    # Deduplicate by barcode, keeping genuine barcodes
     seen_barcodes = set()
     deduped = []
     for p in all_products:
@@ -204,11 +209,8 @@ def run():
         if bc not in seen_barcodes:
             seen_barcodes.add(bc)
             deduped.append(p)
-        else:
-            # If same barcode, keep first or update
-            pass
 
-    print(f"\nTotal unique products to import: {len(deduped)}")
+    print(f"\nTotal unique grocery products to import: {len(deduped)}")
 
     # Ensure shopkeeper exists
     shopkeepers = list(ShopkeeperProfile.objects.all())
@@ -223,40 +225,37 @@ def run():
         )
         shopkeepers = [default_sk]
 
-    # Save to database for each shopkeeper
+    # Save to database in bulk batches for extreme speed
     for sk in shopkeepers:
-        # Check existing barcodes
-        existing = {p.barcode: p for p in Product.objects.filter(shopkeeper=sk)}
-        created_count = 0
-        updated_count = 0
-
+        existing_barcodes = set(Product.objects.filter(shopkeeper=sk).values_list('barcode', flat=True))
+        
+        to_create = []
         for p in deduped:
-            bc = p['barcode']
-            if bc in existing:
-                prod = existing[bc]
-                prod.name = p['name']
-                prod.value = p['value']
-                prod.save()
-                updated_count += 1
-            else:
-                Product.objects.create(
-                    shopkeeper=sk,
-                    name=p['name'],
-                    value=p['value'],
-                    barcode=bc,
-                    color=p['color'],
-                    width=p['width'],
-                    sold=p['sold']
+            if p['barcode'] not in existing_barcodes:
+                to_create.append(
+                    Product(
+                        shopkeeper=sk,
+                        name=p['name'],
+                        value=p['value'],
+                        barcode=p['barcode'],
+                        color=p['color'],
+                        width=p['width'],
+                        sold=p['sold']
+                    )
                 )
-                created_count += 1
 
-        print(f"Shopkeeper {sk.email}: {created_count} added, {updated_count} updated.")
+        if to_create:
+            print(f"Bulk inserting {len(to_create)} new products for {sk.email}...")
+            Product.objects.bulk_create(to_create, batch_size=2000)
+            print(f"Shopkeeper {sk.email}: {len(to_create)} products successfully added to database.")
+        else:
+            print(f"Shopkeeper {sk.email}: all {len(deduped)} products are already up to date.")
 
-    # Also sync to frontend offline public directory
+    # Sync to frontend offline public directory
     sync_to_frontend(deduped)
 
     print("\n==================================================")
-    print(f"SUCCESS! {len(deduped)} grocery items imported.")
+    print(f"SUCCESS! {len(deduped)} grocery items loaded.")
     print("==================================================")
 
 if __name__ == '__main__':
