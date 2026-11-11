@@ -57,6 +57,13 @@ export default function PayLaterSection() {
     note: string;
   } | null>(null);
 
+  // UPI confirmation step — shown before the actual QR code is generated
+  const [upiConfirmStep, setUpiConfirmStep] = useState<{
+    customer: PayLaterCustomer;
+    amount: number;
+    note: string;
+  } | null>(null);
+
   const refreshPayLaterData = () => {
     const list = getStorePayLaterCustomers(shopkeeper?.email);
     setPayLaterCustomers(list);
@@ -128,9 +135,9 @@ export default function PayLaterSection() {
       return;
     }
 
-    // If UPI selected, open the dynamic UPI QR Code Modal for the exact amount entered
+    // If UPI selected, first show the UPI amount confirmation step before generating QR
     if (collectMode === "UPI") {
-      setPayLaterUpiData({
+      setUpiConfirmStep({
         customer: collectModalCustomer,
         amount: amt,
         note: collectNote,
@@ -747,6 +754,123 @@ export default function PayLaterSection() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── UPI Payment Confirmation Step (shown BEFORE actual QR) ── */}
+      {upiConfirmStep && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl border border-slate-100 overflow-hidden">
+            {/* Header */}
+            <div className="relative bg-gradient-to-br from-violet-600 to-indigo-600 px-6 py-5 text-white">
+              <button
+                type="button"
+                onClick={() => setUpiConfirmStep(null)}
+                className="absolute right-4 top-4 rounded-full p-1 text-white/60 hover:bg-white/20 hover:text-white transition"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur">
+                  <QrCode className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-white/70">
+                    UPI Payment — Confirm Amount
+                  </p>
+                  <p className="text-xl font-black">
+                    ₹{upiConfirmStep.amount.toLocaleString("en-IN")}
+                  </p>
+                </div>
+              </div>
+              {upiConfirmStep.customer && (
+                <p className="mt-2 text-xs text-white/75">
+                  For:{" "}
+                  <span className="font-semibold text-white">
+                    {upiConfirmStep.customer.customerName}
+                  </span>
+                </p>
+              )}
+            </div>
+
+            {/* Amount Breakdown */}
+            <div className="p-5 space-y-3">
+              {/* Info row */}
+              <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 space-y-2.5">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-500 font-medium">Total outstanding balance</span>
+                  <span className="font-black text-rose-600">
+                    ₹{upiConfirmStep.customer.totalDue.toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-600 font-medium flex items-center gap-1.5">
+                    <QrCode className="h-3.5 w-3.5 text-violet-500" />
+                    Paying via UPI / QR now
+                  </span>
+                  <span className="font-black text-violet-700">
+                    ₹{upiConfirmStep.amount.toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <div className="pt-2 border-t border-indigo-100 flex items-center justify-between text-sm font-black">
+                  <span className="text-slate-700">Remaining Udhar balance</span>
+                  {(() => {
+                    const rem = Math.max(0, upiConfirmStep.customer.totalDue - upiConfirmStep.amount);
+                    return (
+                      <span className={rem === 0 ? "text-emerald-600" : "text-rose-600"}>
+                        ₹{rem.toLocaleString("en-IN")}{rem === 0 ? " — Fully Cleared! 🎉" : ""}
+                      </span>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* UPI info hint */}
+              <div className="flex items-start gap-2.5 rounded-xl border border-amber-100 bg-amber-50 px-3.5 py-3 text-xs text-amber-800">
+                <IndianRupee className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                <p>
+                  A QR code will be generated for{" "}
+                  <span className="font-bold">
+                    ₹{upiConfirmStep.amount.toLocaleString("en-IN")}
+                  </span>
+                  . Ask the customer to scan it using GPay, PhonePe, Paytm, or BHIM.
+                </p>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const cust = upiConfirmStep.customer;
+                    setUpiConfirmStep(null);
+                    setCollectModalCustomer(cust);
+                    setCollectAmount(String(upiConfirmStep.amount));
+                    setCollectMode("UPI");
+                    setCollectNote(upiConfirmStep.note);
+                  }}
+                  className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
+                >
+                  ← Back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPayLaterUpiData({
+                      customer: upiConfirmStep.customer,
+                      amount: upiConfirmStep.amount,
+                      note: upiConfirmStep.note,
+                    });
+                    setUpiConfirmStep(null);
+                  }}
+                  className="flex-[2] flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-violet-500/25 transition hover:brightness-110 active:scale-[0.98]"
+                >
+                  <QrCode className="h-4 w-4" />
+                  Generate QR Code →
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
