@@ -164,6 +164,8 @@ export default function Home() {
   const [partialAmount, setPartialAmount] = useState<string>("");
   const [partialMode, setPartialMode] = useState<"Cash" | "UPI">("Cash");
   const [partialUpiData, setPartialUpiData] = useState<{ bill: any; amount: number } | null>(null);
+  // UPI confirmation step (shows amount summary BEFORE the actual QR modal)
+  const [partialUpiConfirm, setPartialUpiConfirm] = useState<{ bill: any; amount: number } | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60000);
@@ -299,9 +301,9 @@ export default function Home() {
       return;
     }
 
-    // If UPI selected, open the dynamic UPI QR code modal for the exact partial/full amount
+    // If UPI selected, first show the UPI amount confirmation step before generating QR
     if (partialMode === "UPI") {
-      setPartialUpiData({ bill: partialPayBill, amount: amt });
+      setPartialUpiConfirm({ bill: partialPayBill, amount: amt });
       setPartialPayBill(null);
       return;
     }
@@ -873,6 +875,111 @@ export default function Home() {
                       </>
                     )}
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Dynamic UPI QR Code Modal for partial bill collection */}
+          {partialUpiConfirm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
+              <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl border border-slate-100 overflow-hidden">
+                {/* Header */}
+                <div className="relative bg-gradient-to-br from-violet-600 to-indigo-600 px-6 py-5 text-white">
+                  <button
+                    type="button"
+                    onClick={() => setPartialUpiConfirm(null)}
+                    className="absolute right-4 top-4 rounded-full p-1 text-white/60 hover:bg-white/20 hover:text-white transition"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur">
+                      <QrCode className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-white/70">
+                        UPI Payment — Confirm Amount
+                      </p>
+                      <p className="text-xl font-black">
+                        ₹{partialUpiConfirm.amount.toLocaleString("en-IN")}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-xs text-white/75">
+                    Invoice: <span className="font-semibold text-white">{partialUpiConfirm.bill.invoice}</span>
+                    {" · "}Customer: <span className="font-semibold text-white">{partialUpiConfirm.bill.customer}</span>
+                  </p>
+                </div>
+
+                {/* Amount Breakdown */}
+                <div className="p-5 space-y-3">
+                  <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 space-y-2.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500 font-medium">Pending balance</span>
+                      <span className="font-black text-rose-600">
+                        {partialUpiConfirm.bill.amount}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-600 font-medium flex items-center gap-1.5">
+                        <QrCode className="h-3.5 w-3.5 text-violet-500" />
+                        Paying via UPI / QR now
+                      </span>
+                      <span className="font-black text-violet-700">
+                        ₹{partialUpiConfirm.amount.toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                    <div className="pt-2 border-t border-indigo-100 flex items-center justify-between text-sm font-black">
+                      <span className="text-slate-700">Remaining bill balance</span>
+                      {(() => {
+                        const origStr = String(partialUpiConfirm.bill.amount || "0").replace(/[₹,]/g, "").trim();
+                        const orig = parseFloat(origStr) || 0;
+                        const rem = Math.max(0, orig - partialUpiConfirm.amount);
+                        return (
+                          <span className={rem === 0 ? "text-emerald-600" : "text-rose-600"}>
+                            ₹{rem.toLocaleString("en-IN")}{rem === 0 ? " — Fully Paid! 🎉" : ""}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2.5 rounded-xl border border-amber-100 bg-amber-50 px-3.5 py-3 text-xs text-amber-800">
+                    <IndianRupee className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                    <p>
+                      A QR code will be generated for{" "}
+                      <span className="font-bold">₹{partialUpiConfirm.amount.toLocaleString("en-IN")}</span>.
+                      Ask the customer to scan it using GPay, PhonePe, Paytm, or BHIM.
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const b = partialUpiConfirm.bill;
+                        setPartialUpiConfirm(null);
+                        setPartialPayBill(b);
+                        setPartialAmount(String(partialUpiConfirm.amount));
+                        setPartialMode("UPI");
+                      }}
+                      className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPartialUpiData({ bill: partialUpiConfirm.bill, amount: partialUpiConfirm.amount });
+                        setPartialUpiConfirm(null);
+                      }}
+                      className="flex-[2] flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-violet-500/25 transition hover:brightness-110 active:scale-[0.98]"
+                    >
+                      <QrCode className="h-4 w-4" />
+                      Generate QR Code →
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

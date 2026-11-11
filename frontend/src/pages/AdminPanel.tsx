@@ -685,21 +685,21 @@ export default function AdminPanel() {
   // RENDER: Super Admin Portal Main Dashboard
   // ==========================================
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-violet-500 selection:text-white">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-violet-500 selection:text-white w-full max-w-full overflow-x-hidden">
       {/* Top Admin Navigation Header */}
-      <header className="sticky top-0 z-40 bg-slate-900/90 border-b border-slate-800/80 backdrop-blur-xl px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20 ring-2 ring-violet-400/30">
-            <ShieldCheck className="h-5 w-5" />
+      <header className="sticky top-0 z-40 bg-slate-900/90 border-b border-slate-800/80 backdrop-blur-xl px-3 sm:px-8 py-3 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-4 w-full">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/20 ring-2 ring-violet-400/30">
+            <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-base tracking-tight text-white">QBill Platform Admin</span>
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live Monitor
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="font-extrabold text-sm sm:text-base tracking-tight text-white truncate">QBill Admin</span>
+              <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[9px] sm:text-[10px] font-bold shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live
               </span>
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[10px] sm:text-[11px] text-slate-400 truncate hidden xs:block">
               Platform Supervisor & Shopkeeper Activity Dashboard
             </p>
           </div>
@@ -729,11 +729,11 @@ export default function AdminPanel() {
         </div>
 
         {/* Header Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <button
             onClick={fetchAdminData}
             disabled={refreshing}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-300 transition active:scale-95"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-300 transition active:scale-95"
             title="Refresh Live Data"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-violet-400" : ""}`} />
@@ -742,7 +742,7 @@ export default function AdminPanel() {
 
           <Link
             href="/"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-xs font-semibold text-indigo-300 transition"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-xs font-semibold text-indigo-300 transition"
           >
             <Store className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Shopkeeper POS</span>
@@ -750,7 +750,7 @@ export default function AdminPanel() {
 
           <button
             onClick={handleAdminLogout}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-xs font-semibold text-rose-400 transition"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-xs font-semibold text-rose-400 transition"
             title="Log Out Admin"
           >
             <LogOut className="w-3.5 h-3.5" />
@@ -760,52 +760,54 @@ export default function AdminPanel() {
       </header>
 
       {/* Main Admin Content Container */}
-      <div className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+      <div className="flex-1 max-w-[1600px] w-full mx-auto p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 overflow-x-hidden">
         {/* Navigation Tabs Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-          <div className="flex items-center gap-2 bg-slate-900 p-1.5 rounded-2xl border border-slate-800 self-start">
-            <button
-              onClick={() => setActiveTab("shops")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeTab === "shops"
-                  ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/20"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <Store className="w-4 h-4" />
-              <span>Registered Shops</span>
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-white/20 text-white">
-                {shops.length}
-              </span>
-            </button>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div className="w-full sm:w-auto overflow-x-auto no-scrollbar -mx-1 px-1">
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-slate-900 p-1.5 rounded-2xl border border-slate-800 min-w-max">
+              <button
+                onClick={() => setActiveTab("shops")}
+                className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 whitespace-nowrap ${
+                  activeTab === "shops"
+                    ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/20"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <Store className="w-4 h-4 shrink-0" />
+                <span>Registered Shops</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-white/20 text-white">
+                  {shops.length}
+                </span>
+              </button>
 
-            <button
-              onClick={() => setActiveTab("overview")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeTab === "overview"
-                  ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/20"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <Activity className="w-4 h-4" />
-              <span>Platform Analytics</span>
-            </button>
+              <button
+                onClick={() => setActiveTab("overview")}
+                className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 whitespace-nowrap ${
+                  activeTab === "overview"
+                    ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/20"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <Activity className="w-4 h-4 shrink-0" />
+                <span>Platform Analytics</span>
+              </button>
 
-            <button
-              onClick={() => setActiveTab("activity")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeTab === "activity"
-                  ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/20"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <Clock className="w-4 h-4" />
-              <span>Live Invoices Stream</span>
-            </button>
+              <button
+                onClick={() => setActiveTab("activity")}
+                className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 whitespace-nowrap ${
+                  activeTab === "activity"
+                    ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/20"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <Clock className="w-4 h-4 shrink-0" />
+                <span>Live Invoices Stream</span>
+              </button>
+            </div>
           </div>
 
           {/* Quick Actions (Export, Timestamp) */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
             <button
               onClick={handleExportCSV}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 transition"
@@ -819,129 +821,131 @@ export default function AdminPanel() {
         {/* TAB 1: REGISTERED SHOPS DIRECTORY & MONITOR */}
         {/* ========================================== */}
         {activeTab === "shops" && (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Top KPI Cards Strip */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <div className="rounded-2xl bg-gradient-to-br from-violet-900/30 to-slate-900 border border-violet-500/20 p-4 sm:p-5 relative overflow-hidden">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-violet-400">
-                    Total Registered Shops
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+              <div className="rounded-2xl bg-gradient-to-br from-violet-900/30 to-slate-900 border border-violet-500/20 p-3.5 sm:p-5 relative overflow-hidden">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-violet-400 leading-tight">
+                    Registered Shops
                   </span>
-                  <div className="w-8 h-8 rounded-xl bg-violet-500/20 flex items-center justify-center text-violet-300">
-                    <Store className="w-4 h-4" />
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-violet-500/20 flex items-center justify-center text-violet-300 shrink-0">
+                    <Store className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </div>
                 </div>
-                <div className="mt-3 flex items-baseline gap-2">
-                  <span className="text-3xl sm:text-4xl font-black text-white">{shops.length}</span>
-                  <span className="text-xs text-emerald-400 font-semibold">Stores Live</span>
+                <div className="mt-2 sm:mt-3 flex items-baseline gap-1.5 sm:gap-2">
+                  <span className="text-2xl sm:text-3xl lg:text-4xl font-black text-white">{shops.length}</span>
+                  <span className="text-[10px] sm:text-xs text-emerald-400 font-semibold">Live</span>
                 </div>
-                <p className="mt-1 text-[11px] text-slate-400">All registered kirana and retail stores</p>
+                <p className="mt-1 text-[10px] sm:text-[11px] text-slate-400 line-clamp-1">All registered kirana and retail stores</p>
               </div>
 
-              <div className="rounded-2xl bg-gradient-to-br from-emerald-900/30 to-slate-900 border border-emerald-500/20 p-4 sm:p-5 relative overflow-hidden">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
-                    Active Billing Stores
+              <div className="rounded-2xl bg-gradient-to-br from-emerald-900/30 to-slate-900 border border-emerald-500/20 p-3.5 sm:p-5 relative overflow-hidden">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-emerald-400 leading-tight">
+                    Active Billing
                   </span>
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-300">
-                    <TrendingUp className="w-4 h-4" />
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-300 shrink-0">
+                    <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </div>
                 </div>
-                <div className="mt-3 flex items-baseline gap-2">
-                  <span className="text-3xl sm:text-4xl font-black text-emerald-400">
+                <div className="mt-2 sm:mt-3 flex items-baseline gap-1.5 sm:gap-2">
+                  <span className="text-2xl sm:text-3xl lg:text-4xl font-black text-emerald-400">
                     {shops.filter((s) => s.bills_count > 0).length}
                   </span>
-                  <span className="text-xs text-slate-400 font-semibold">of {shops.length}</span>
+                  <span className="text-[10px] sm:text-xs text-slate-400 font-semibold">of {shops.length}</span>
                 </div>
-                <p className="mt-1 text-[11px] text-slate-400">Generated invoices & processed bills</p>
+                <p className="mt-1 text-[10px] sm:text-[11px] text-slate-400 line-clamp-1">Generated invoices & processed bills</p>
               </div>
 
-              <div className="rounded-2xl bg-gradient-to-br from-indigo-900/30 to-slate-900 border border-indigo-500/20 p-4 sm:p-5 relative overflow-hidden">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400">
-                    Platform Gross Sales
+              <div className="rounded-2xl bg-gradient-to-br from-indigo-900/30 to-slate-900 border border-indigo-500/20 p-3.5 sm:p-5 relative overflow-hidden">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-indigo-400 leading-tight">
+                    Gross Sales
                   </span>
-                  <div className="w-8 h-8 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-300">
-                    <IndianRupee className="w-4 h-4" />
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-300 shrink-0">
+                    <IndianRupee className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </div>
                 </div>
-                <div className="mt-3 flex items-baseline gap-2">
-                  <span className="text-3xl sm:text-4xl font-black text-white">
+                <div className="mt-2 sm:mt-3 flex items-baseline gap-1.5 sm:gap-2">
+                  <span className="text-xl sm:text-3xl lg:text-4xl font-black text-white truncate">
                     {summary?.formatted_platform_revenue || "₹0"}
                   </span>
                 </div>
-                <p className="mt-1 text-[11px] text-slate-400">Cumulative sales across all stores</p>
+                <p className="mt-1 text-[10px] sm:text-[11px] text-slate-400 line-clamp-1">Cumulative sales across stores</p>
               </div>
 
-              <div className="rounded-2xl bg-gradient-to-br from-amber-900/30 to-slate-900 border border-amber-500/20 p-4 sm:p-5 relative overflow-hidden">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
-                    Total Invoices Generated
+              <div className="rounded-2xl bg-gradient-to-br from-amber-900/30 to-slate-900 border border-amber-500/20 p-3.5 sm:p-5 relative overflow-hidden">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-amber-400 leading-tight">
+                    Total Invoices
                   </span>
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-300">
-                    <FileText className="w-4 h-4" />
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-300 shrink-0">
+                    <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </div>
                 </div>
-                <div className="mt-3 flex items-baseline gap-2">
-                  <span className="text-3xl sm:text-4xl font-black text-amber-300">
+                <div className="mt-2 sm:mt-3 flex items-baseline gap-1.5 sm:gap-2">
+                  <span className="text-2xl sm:text-3xl lg:text-4xl font-black text-amber-300">
                     {summary?.total_bills || shops.reduce((acc, s) => acc + s.bills_count, 0)}
                   </span>
-                  <span className="text-xs text-slate-400 font-semibold">Invoices</span>
+                  <span className="text-[10px] sm:text-xs text-slate-400 font-semibold">Invoices</span>
                 </div>
-                <p className="mt-1 text-[11px] text-slate-400">Via Voice, Image & Barcode billing</p>
+                <p className="mt-1 text-[10px] sm:text-[11px] text-slate-400 line-clamp-1">Voice, Image & Barcode bills</p>
               </div>
             </div>
 
             {/* Search, Filter & Controls Bar */}
-            <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-4 flex flex-col md:flex-row items-center justify-between gap-3">
+            <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-3 sm:p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
               {/* Search Box */}
               <div className="relative w-full md:w-96">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search by store name, owner, phone, email…"
-                  className="w-full bg-slate-800/80 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                  className="w-full bg-slate-800/80 border border-slate-700 rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
 
-              {/* Status Filters */}
-              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-xl border border-slate-700 text-xs">
-                  {[
-                    { label: "All Stores", key: "all" },
-                    { label: "Active", key: "active" },
-                    { label: "Catalog Ready", key: "catalog" },
-                    { label: "New", key: "new" },
-                  ].map((f) => (
-                    <button
-                      key={f.key}
-                      onClick={() => setStatusFilter(f.key)}
-                      className={`px-3 py-1.5 rounded-lg font-medium transition ${
-                        statusFilter === f.key
-                          ? "bg-violet-600 text-white font-bold shadow-sm"
-                          : "text-slate-400 hover:text-white"
-                      }`}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
+              {/* Status Filters & Sort */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
+                <div className="w-full sm:w-auto overflow-x-auto no-scrollbar -mx-1 px-1">
+                  <div className="inline-flex items-center gap-1 bg-slate-800 p-1 rounded-xl border border-slate-700 text-xs min-w-max">
+                    {[
+                      { label: "All Stores", key: "all" },
+                      { label: "Active", key: "active" },
+                      { label: "Catalog Ready", key: "catalog" },
+                      { label: "New", key: "new" },
+                    ].map((f) => (
+                      <button
+                        key={f.key}
+                        onClick={() => setStatusFilter(f.key)}
+                        className={`px-3 py-1.5 rounded-lg font-medium transition whitespace-nowrap ${
+                          statusFilter === f.key
+                            ? "bg-violet-600 text-white font-bold shadow-sm"
+                            : "text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Sort dropdown */}
                 <select
                   value={sortBy}
                   onChange={(e: any) => setSortBy(e.target.value)}
-                  className="bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500/50"
+                  className="bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500/50 w-full sm:w-auto"
                 >
                   <option value="newest">Sort: Newest Registered</option>
                   <option value="revenue">Sort: Highest Revenue</option>
@@ -951,9 +955,9 @@ export default function AdminPanel() {
               </div>
             </div>
 
-            {/* Registered Shops Table */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/90 overflow-hidden shadow-xl">
-              <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+            {/* Registered Shops Directory (Mobile Cards + Desktop Table) */}
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/90 overflow-hidden shadow-xl max-w-full">
+              <div className="px-4 sm:px-5 py-3.5 sm:py-4 border-b border-slate-800 flex items-center justify-between">
                 <div>
                   <h3 className="font-bold text-sm text-white flex items-center gap-2">
                     <Store className="w-4 h-4 text-violet-400" />
@@ -980,161 +984,243 @@ export default function AdminPanel() {
                   <p className="text-slate-500 mt-1">Try clearing filters or search query.</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-800 bg-slate-950/70 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        <th className="px-5 py-3.5">Store / Business</th>
-                        <th className="px-4 py-3.5">Shopkeeper Owner</th>
-                        <th className="px-4 py-3.5">Contact Details</th>
-                        <th className="px-4 py-3.5">Registered On</th>
-                        <th className="px-4 py-3.5 text-right">Invoices</th>
-                        <th className="px-4 py-3.5 text-right">Total Revenue</th>
-                        <th className="px-4 py-3.5 text-center">Status</th>
-                        <th className="px-5 py-3.5 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60">
-                      {filteredShops.map((shop) => (
-                        <tr
-                          key={shop.id}
-                          className="hover:bg-slate-800/40 transition group cursor-pointer"
-                          onClick={() => handleInspectShop(shop.id)}
-                        >
-                          {/* Store Name & Avatar */}
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-violet-600/30 to-indigo-600/30 border border-violet-500/30 flex items-center justify-center text-violet-300 font-bold text-sm shrink-0">
-                                {shop.store_name ? shop.store_name[0].toUpperCase() : "S"}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-bold text-slate-100 text-sm group-hover:text-violet-300 transition truncate">
-                                  {shop.store_name}
-                                </p>
-                                <p className="text-[11px] text-slate-400 truncate flex items-center gap-1 mt-0.5">
-                                  <MapPin className="w-3 h-3 text-slate-500 shrink-0" />
-                                  <span>{shop.address || "Location not set"}</span>
-                                </p>
-                              </div>
+                <>
+                  {/* Mobile Shop Cards (< md) */}
+                  <div className="divide-y divide-slate-800/80 md:hidden">
+                    {filteredShops.map((shop) => (
+                      <div
+                        key={shop.id}
+                        className="p-3.5 space-y-2.5 hover:bg-slate-800/30 transition cursor-pointer"
+                        onClick={() => handleInspectShop(shop.id)}
+                      >
+                        <div className="flex items-start justify-between gap-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-violet-600/30 to-indigo-600/30 border border-violet-500/30 flex items-center justify-center text-violet-300 font-bold text-sm shrink-0">
+                              {shop.store_name ? shop.store_name[0].toUpperCase() : "S"}
                             </div>
-                          </td>
-
-                          {/* Shopkeeper Name */}
-                          <td className="px-4 py-4">
-                            <p className="font-semibold text-slate-200">{shop.name}</p>
-                            {shop.upi_id && (
-                              <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5 font-mono">
-                                <CreditCard className="w-3 h-3 text-emerald-400" />
-                                <span>{shop.upi_id}</span>
-                              </p>
-                            )}
-                          </td>
-
-                          {/* Contact */}
-                          <td className="px-4 py-4">
-                            <div className="space-y-1">
-                              <a
-                                href={`mailto:${shop.email}`}
-                                onClick={(e) => e.stopPropagation()}
-                                className="flex items-center gap-1.5 text-slate-300 hover:text-violet-300 transition"
-                              >
-                                <Mail className="w-3 h-3 text-slate-400" />
-                                <span className="truncate max-w-[150px]">{shop.email}</span>
-                              </a>
-                              {shop.phone && (
-                                <a
-                                  href={`tel:${shop.phone}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="flex items-center gap-1.5 text-slate-400 hover:text-emerald-300 transition"
-                                >
-                                  <Phone className="w-3 h-3 text-slate-500" />
-                                  <span>{shop.phone}</span>
-                                </a>
-                              )}
+                            <div className="min-w-0">
+                              <p className="font-bold text-slate-100 text-sm truncate">{shop.store_name}</p>
+                              <p className="text-[11px] text-slate-400 truncate">Owner: {shop.name}</p>
                             </div>
-                          </td>
-
-                          {/* Registered On */}
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <span className="text-slate-300 font-medium">{shop.created_at_formatted}</span>
-                            <p className="text-[10px] text-slate-500 mt-0.5">Last active: {shop.last_active}</p>
-                          </td>
-
-                          {/* Invoices Count */}
-                          <td className="px-4 py-4 text-right">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 font-bold">
-                              <FileText className="w-3 h-3 text-indigo-400" />
-                              {shop.bills_count}
-                            </span>
-                          </td>
-
-                          {/* Total Revenue */}
-                          <td className="px-4 py-4 text-right">
-                            <span className="font-bold text-sm text-emerald-400">
-                              {shop.formatted_revenue}
-                            </span>
-                            <p className="text-[10px] text-slate-500">
-                              {shop.products_count} products
-                            </p>
-                          </td>
-
-                          {/* Status */}
-                          <td className="px-4 py-4 text-center">
+                          </div>
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                              shop.status === "Active"
+                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                                : shop.status === "Catalog Ready"
+                                ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/30"
+                                : "bg-slate-700/50 text-slate-400 border border-slate-700"
+                            }`}
+                          >
                             <span
-                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                              className={`w-1.5 h-1.5 rounded-full ${
                                 shop.status === "Active"
-                                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                                  ? "bg-emerald-400"
                                   : shop.status === "Catalog Ready"
-                                  ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/30"
-                                  : "bg-slate-700/50 text-slate-400 border border-slate-700"
+                                  ? "bg-indigo-400"
+                                  : "bg-slate-400"
                               }`}
-                            >
-                              <span
-                                className={`w-1.5 h-1.5 rounded-full ${
-                                  shop.status === "Active"
-                                    ? "bg-emerald-400"
-                                    : shop.status === "Catalog Ready"
-                                    ? "bg-indigo-400"
-                                    : "bg-slate-400"
-                                }`}
-                              />
-                              {shop.status}
-                            </span>
-                          </td>
+                            />
+                            {shop.status}
+                          </span>
+                        </div>
 
-                          {/* Actions */}
-                          <td className="px-5 py-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                onClick={() => handleInspectShop(shop.id)}
-                                className="px-2.5 py-1.5 rounded-lg bg-violet-600/20 hover:bg-violet-600 text-violet-300 hover:text-white border border-violet-500/30 text-[11px] font-semibold transition"
-                                title="Inspect Activity"
-                              >
-                                Inspect
-                              </button>
+                        <div className="grid grid-cols-2 gap-2 text-xs bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
+                          <div>
+                            <span className="text-[10px] text-slate-500 block uppercase font-bold">Revenue</span>
+                            <span className="font-bold text-emerald-400">{shop.formatted_revenue}</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-500 block uppercase font-bold">Invoices</span>
+                            <span className="font-bold text-slate-200">{shop.bills_count} bills</span>
+                          </div>
+                          <div className="col-span-2 pt-1 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
+                            <span className="truncate">{shop.phone || shop.email}</span>
+                            <span className="shrink-0">{shop.created_at_formatted}</span>
+                          </div>
+                        </div>
 
-                              <button
-                                onClick={() => handleImpersonateShop(shop)}
-                                className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold border border-slate-700 transition"
-                                title="Launch Store POS"
-                              >
-                                <ExternalLink className="w-3.5 h-3.5" />
-                              </button>
+                        <div className="flex items-center justify-end gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => handleInspectShop(shop.id)}
+                            className="flex-1 py-1.5 rounded-lg bg-violet-600/20 text-violet-300 border border-violet-500/30 text-xs font-semibold text-center hover:bg-violet-600 hover:text-white transition"
+                          >
+                            Inspect Store
+                          </button>
+                          <button
+                            onClick={() => handleImpersonateShop(shop)}
+                            className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-700 flex items-center gap-1 hover:bg-slate-700 transition"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" /> POS
+                          </button>
+                          <button
+                            onClick={() => setShopToDelete(shop)}
+                            className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500 hover:text-white transition"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
 
-                              <button
-                                onClick={() => setShopToDelete(shop)}
-                                className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/30 transition"
-                                title="Delete Store"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </td>
+                  {/* Desktop Shops Table (≥ md) */}
+                  <div className="overflow-x-auto max-w-full hidden md:block">
+                    <table className="w-full text-left text-xs min-w-[720px]">
+                      <thead>
+                        <tr className="border-b border-slate-800 bg-slate-950/70 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          <th className="px-5 py-3.5">Store / Business</th>
+                          <th className="px-4 py-3.5">Shopkeeper Owner</th>
+                          <th className="px-4 py-3.5">Contact Details</th>
+                          <th className="px-4 py-3.5">Registered On</th>
+                          <th className="px-4 py-3.5 text-right">Invoices</th>
+                          <th className="px-4 py-3.5 text-right">Total Revenue</th>
+                          <th className="px-4 py-3.5 text-center">Status</th>
+                          <th className="px-5 py-3.5 text-right">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60">
+                        {filteredShops.map((shop) => (
+                          <tr
+                            key={shop.id}
+                            className="hover:bg-slate-800/40 transition group cursor-pointer"
+                            onClick={() => handleInspectShop(shop.id)}
+                          >
+                            {/* Store Name & Avatar */}
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-violet-600/30 to-indigo-600/30 border border-violet-500/30 flex items-center justify-center text-violet-300 font-bold text-sm shrink-0">
+                                  {shop.store_name ? shop.store_name[0].toUpperCase() : "S"}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-bold text-slate-100 text-sm group-hover:text-violet-300 transition truncate">
+                                    {shop.store_name}
+                                  </p>
+                                  <p className="text-[11px] text-slate-400 truncate flex items-center gap-1 mt-0.5">
+                                    <MapPin className="w-3 h-3 text-slate-500 shrink-0" />
+                                    <span>{shop.address || "Location not set"}</span>
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Shopkeeper Name */}
+                            <td className="px-4 py-4">
+                              <p className="font-semibold text-slate-200">{shop.name}</p>
+                              {shop.upi_id && (
+                                <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5 font-mono">
+                                  <CreditCard className="w-3 h-3 text-emerald-400" />
+                                  <span>{shop.upi_id}</span>
+                                </p>
+                              )}
+                            </td>
+
+                            {/* Contact */}
+                            <td className="px-4 py-4">
+                              <div className="space-y-1">
+                                <a
+                                  href={`mailto:${shop.email}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="flex items-center gap-1.5 text-slate-300 hover:text-violet-300 transition"
+                                >
+                                  <Mail className="w-3 h-3 text-slate-400" />
+                                  <span className="truncate max-w-[150px]">{shop.email}</span>
+                                </a>
+                                {shop.phone && (
+                                  <a
+                                    href={`tel:${shop.phone}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="flex items-center gap-1.5 text-slate-400 hover:text-emerald-300 transition"
+                                  >
+                                    <Phone className="w-3 h-3 text-slate-500" />
+                                    <span>{shop.phone}</span>
+                                  </a>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Registered On */}
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <span className="text-slate-300 font-medium">{shop.created_at_formatted}</span>
+                              <p className="text-[10px] text-slate-500 mt-0.5">Last active: {shop.last_active}</p>
+                            </td>
+
+                            {/* Invoices Count */}
+                            <td className="px-4 py-4 text-right">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 font-bold">
+                                <FileText className="w-3 h-3 text-indigo-400" />
+                                {shop.bills_count}
+                              </span>
+                            </td>
+
+                            {/* Total Revenue */}
+                            <td className="px-4 py-4 text-right">
+                              <span className="font-bold text-sm text-emerald-400">
+                                {shop.formatted_revenue}
+                              </span>
+                              <p className="text-[10px] text-slate-500">
+                                {shop.products_count} products
+                              </p>
+                            </td>
+
+                            {/* Status */}
+                            <td className="px-4 py-4 text-center">
+                              <span
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                                  shop.status === "Active"
+                                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                                    : shop.status === "Catalog Ready"
+                                    ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/30"
+                                    : "bg-slate-700/50 text-slate-400 border border-slate-700"
+                                }`}
+                              >
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${
+                                    shop.status === "Active"
+                                      ? "bg-emerald-400"
+                                      : shop.status === "Catalog Ready"
+                                      ? "bg-indigo-400"
+                                      : "bg-slate-400"
+                                  }`}
+                                />
+                                {shop.status}
+                              </span>
+                            </td>
+
+                            {/* Actions */}
+                            <td className="px-5 py-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  onClick={() => handleInspectShop(shop.id)}
+                                  className="px-2.5 py-1.5 rounded-lg bg-violet-600/20 hover:bg-violet-600 text-violet-300 hover:text-white border border-violet-500/30 text-[11px] font-semibold transition"
+                                  title="Inspect Activity"
+                                >
+                                  Inspect
+                                </button>
+
+                                <button
+                                  onClick={() => handleImpersonateShop(shop)}
+                                  className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold border border-slate-700 transition"
+                                  title="Launch Store POS"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                </button>
+
+                                <button
+                                  onClick={() => setShopToDelete(shop)}
+                                  className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/30 transition"
+                                  title="Delete Store"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
             </div>
           </div>

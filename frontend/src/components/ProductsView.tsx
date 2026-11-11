@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { Package, Plus, Edit2, Trash2, X, Camera, ScanLine, Upload } from 'lucide-react';
+import { Package, Plus, Edit2, Trash2, X, Camera, ScanLine, Upload, Search, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../App';
 import { apiUrl } from '../config/api';
@@ -24,6 +24,7 @@ export default function ProductsView() {
   });
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const datasetInputRef = React.useRef<HTMLInputElement>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleDatasetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -178,12 +179,49 @@ export default function ProductsView() {
     }
   };
 
+  // ── Search + Low-Stock helpers ──────────────────────────────────────────
+  const parseSoldNum = (s: string) => {
+    const str = String(s || '0').toLowerCase().replace('sold', '').replace(/,/g, '').trim();
+    if (str.endsWith('k')) return parseFloat(str) * 1000;
+    return parseInt(str) || 0;
+  };
+
+  const isLowStock = (product: any) => {
+    const sold = parseSoldNum(product.sold);
+    // Consider low stock if the product has been selling but "sold" appears low,
+    // or if the product has a "stock" field that is ≤ 5
+    if (typeof product.stock === 'number') return product.stock <= 5;
+    // Fallback: use width-based popularity (< 10% = low stock proxy)
+    const pct = parseFloat(String(product.width || '0%')) || 0;
+    return pct > 0 && pct < 10;
+  };
+
+  const filteredProducts = useMemo(() => {
+    if (!searchQuery.trim()) return products;
+    const q = searchQuery.toLowerCase();
+    return products.filter(p =>
+      p.name?.toLowerCase().includes(q) ||
+      p.barcode?.toLowerCase().includes(q) ||
+      p.value?.toLowerCase().includes(q)
+    );
+  }, [products, searchQuery]);
+
+  const lowStockCount = useMemo(() => products.filter(isLowStock).length, [products]);
+
   return (
     <div className="mx-auto max-w-[1500px] px-4 pb-12 pt-7 sm:px-6 lg:px-10 lg:pt-9">
       <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-[28px] font-bold tracking-[-0.04em] text-slate-950 sm:text-[34px]">Products</h1>
-          <p className="mt-2 text-sm text-slate-500">Manage your store's inventory and items.</p>
+          <p className="mt-2 text-sm text-slate-500">
+            Manage your store's inventory and items.{" "}
+            <span className="font-semibold text-slate-700">{products.length} total</span>
+            {lowStockCount > 0 && (
+              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-bold text-rose-700 border border-rose-200">
+                <AlertTriangle className="h-3 w-3" /> {lowStockCount} Low Stock
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <input
@@ -208,27 +246,66 @@ export default function ProductsView() {
         </div>
       </div>
 
+      {/* Search bar */}
+      <div className="mb-5 relative max-w-md">
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search by name, barcode, or price..."
+          className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-violet-300 focus:ring-4 focus:ring-violet-100/70"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-slate-400 hover:text-slate-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Low Stock Alert Banner */}
+      {lowStockCount > 0 && (
+        <div className="mb-5 flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3">
+          <AlertTriangle className="h-5 w-5 shrink-0 text-rose-500" />
+          <p className="text-sm font-semibold text-rose-800">
+            <span className="font-black">{lowStockCount}</span> product{lowStockCount > 1 ? 's are' : ' is'} running low on stock. Review and restock soon.
+          </p>
+        </div>
+      )}
+
       {/* Mobile Product Cards Feed (Visible on mobile) */}
       <div className="space-y-3 md:hidden mb-6">
         {loading ? (
           <div className="py-10 text-center text-sm text-slate-500">Loading products...</div>
-        ) : products.length === 0 ? (
+        ) : filteredProducts.length === 0 ? (
           <div className="py-10 text-center text-sm text-slate-500 rounded-2xl border border-slate-200 bg-white p-6">
-            No products found. Add one above!
+            {searchQuery ? `No products match "${searchQuery}". Try a different search.` : 'No products found. Add one above!'}
           </div>
         ) : (
-          products.map((product) => (
+          filteredProducts.map((product) => {
+            const lowStock = isLowStock(product);
+            return (
             <div
               key={product.id}
-              className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm"
+              className={`rounded-2xl border bg-white p-4 shadow-sm ${lowStock ? 'border-rose-200 bg-rose-50/30' : 'border-slate-200/80'}`}
             >
               <div className="flex items-start justify-between gap-3 mb-2.5">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${lowStock ? 'bg-rose-100 text-rose-600' : 'bg-violet-50 text-violet-600'}`}>
                     <Package className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-900 leading-tight">{product.name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-bold text-slate-900 leading-tight">{product.name}</p>
+                      {lowStock && (
+                        <span className="inline-flex items-center gap-0.5 rounded-md bg-rose-100 px-1.5 py-0.5 text-[9px] font-bold text-rose-700">
+                          <AlertTriangle className="h-2.5 w-2.5" /> Low
+                        </span>
+                      )}
+                    </div>
                     {product.barcode && (
                       <p className="font-mono text-[10px] text-slate-400 mt-0.5">Barcode: {product.barcode}</p>
                     )}
@@ -255,7 +332,8 @@ export default function ProductsView() {
                 </div>
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
 
@@ -266,29 +344,29 @@ export default function ProductsView() {
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/60 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
                 <th className="px-5 py-3 font-bold sm:px-6">Product Name</th>
+                <th className="px-3 py-3 font-bold">Barcode</th>
                 <th className="px-3 py-3 font-bold">Value</th>
                 <th className="px-3 py-3 font-bold">Sold</th>
                 <th className="px-3 py-3 font-bold">Popularity</th>
+                <th className="px-3 py-3 font-bold">Stock</th>
                 <th className="px-5 py-3 text-right font-bold sm:px-6">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={5} className="py-10 text-center text-sm text-slate-500">Loading...</td></tr>
-              ) : products.length === 0 ? (
-                <tr><td colSpan={5} className="py-10 text-center text-sm text-slate-500">No products found. Add one above!</td></tr>
+                <tr><td colSpan={7} className="py-10 text-center text-sm text-slate-500">Loading...</td></tr>
+              ) : filteredProducts.length === 0 ? (
+                <tr><td colSpan={7} className="py-10 text-center text-sm text-slate-500">
+                  {searchQuery ? `No products match "${searchQuery}".` : 'No products found. Add one above!'}
+                </td></tr>
               ) : (
                 (() => {
-                  const parseSold = (s: string) => {
-                    const str = String(s || '0').toLowerCase().replace('sold', '').replace(/,/g, '').trim();
-                    if (str.endsWith('k')) return parseFloat(str) * 1000;
-                    return parseInt(str) || 0;
-                  };
-                  const maxSold = Math.max(1, ...products.map(p => parseSold(p.sold)));
+                  const maxSold = Math.max(1, ...filteredProducts.map(p => parseSoldNum(p.sold)));
 
-                  return products.map((product) => {
-                    const soldNum = parseSold(product.sold);
+                  return filteredProducts.map((product) => {
+                    const soldNum = parseSoldNum(product.sold);
                     const percent = Math.min(100, Math.max(0, (soldNum / maxSold) * 100));
+                    const lowStock = isLowStock(product);
 
                     let dynamicColor = 'bg-slate-300';
                     if (percent > 80) dynamicColor = 'bg-violet-500';
@@ -297,14 +375,28 @@ export default function ProductsView() {
                     else if (percent > 0) dynamicColor = 'bg-amber-500';
 
                     return (
-                      <tr key={product.id} className="border-b border-slate-50 last:border-0 transition hover:bg-slate-50/70">
+                      <tr key={product.id} className={`border-b border-slate-50 last:border-0 transition hover:bg-slate-50/70 ${lowStock ? 'bg-rose-50/20' : ''}`}>
                         <td className="px-5 py-4 sm:px-6">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${lowStock ? 'bg-rose-100 text-rose-600' : 'bg-violet-50 text-violet-600'}`}>
                               <Package className="h-5 w-5" />
                             </div>
-                            <span className="text-sm font-bold text-slate-800">{product.name}</span>
+                            <div>
+                              <span className="text-sm font-bold text-slate-800">{product.name}</span>
+                              {lowStock && (
+                                <span className="ml-2 inline-flex items-center gap-0.5 rounded-md bg-rose-100 px-1.5 py-0.5 text-[9px] font-bold text-rose-700">
+                                  <AlertTriangle className="h-2.5 w-2.5" /> Low Stock
+                                </span>
+                              )}
+                            </div>
                           </div>
+                        </td>
+                        <td className="px-3 py-4">
+                          {product.barcode ? (
+                            <span className="font-mono text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">{product.barcode}</span>
+                          ) : (
+                            <span className="text-[11px] text-slate-300">—</span>
+                          )}
                         </td>
                         <td className="px-3 py-4 text-sm font-bold text-slate-900">{product.value}</td>
                         <td className="px-3 py-4 text-xs font-semibold text-slate-600">{product.sold}</td>

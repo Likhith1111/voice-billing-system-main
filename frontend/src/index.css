@@ -82,10 +82,17 @@
 }
 
 * { box-sizing: border-box; }
-html { min-width: 320px; background: #f5f7fb; }
+html {
+  min-width: 320px;
+  max-width: 100vw;
+  overflow-x: hidden;
+  background: #f5f7fb;
+}
 body {
   margin: 0;
   min-width: 320px;
+  max-width: 100vw;
+  overflow-x: hidden;
   background: #f5f7fb;
   font-family: 'DM Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -93,6 +100,14 @@ body {
 }
 button, input { font: inherit; }
 .font-display { font-family: 'Space Grotesk', sans-serif; }
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
 @layer base {
   * { @apply border-border outline-ring/50; }
